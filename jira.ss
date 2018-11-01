@@ -326,16 +326,16 @@ namespace: jira
 		  ("jql" query)))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (with-input-from-string results read-json)))
-      (displayln "| Key| Priority | Summary| Status| Updated| Assignee| Creator| Reporter| IssueType| Project| Watchers|")
+      (displayln "| Key| Summary | Priority | Updated| Status| Assignee| Creator| Reporter| Issuetype | Project| watchers| Url")
       (displayln "|-|")
       (for-each
 	(lambda (p)
     	  (let-hash p
     	    (let-hash .fields
     	      (displayln "|" ..key
-    			 ;; 	       "|" (hash-ref .?priority 'name)
     	     		 "|" .?summary
-    	     		 "|" .?updated
+			 "|" (when (table? .?priority) (hash-ref .priority 'name))
+     			 "|" .?updated
     	     		 "|" (when (table? .?status) (hash-ref .status 'name))
     	     		 "|" (when (table? .?assignee) (hash-ref .assignee 'name))
     	     		 "|" (when (table? .?creator) (hash-ref .creator 'name))
@@ -343,7 +343,6 @@ namespace: jira
     	     		 "|" (when (table? .?issuetype) (hash-ref .issuetype 'name))
     	     		 "|" (when (table? .?project) (hash-ref .project 'name))
     	     		 "|" (hash-ref .watches 'watchCount)
-    	     		 ;;		       "|" .description
     	     		 (format "|~a/browse/~a" ...url ..key)
     	     		 "|"))))
 	(hash-ref myjson 'issues)))))
