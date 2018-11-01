@@ -335,7 +335,7 @@ namespace: jira
     	      (displayln "|" ..key
     	     		 "|" .?summary
 			 "|" (when (table? .?priority) (hash-ref .priority 'name))
-     			 "|" .?updated
+     			 "|" (when .?updated (date->custom .updated))
     	     		 "|" (when (table? .?status) (hash-ref .status 'name))
     	     		 "|" (when (table? .?assignee) (hash-ref .assignee 'name))
     	     		 "|" (when (table? .?creator) (hash-ref .creator 'name))
@@ -346,6 +346,10 @@ namespace: jira
     	     		 (format "|~a/browse/~a" ...url ..key)
     	     		 "|"))))
 	(hash-ref myjson 'issues)))))
+
+
+(def (date->custom dt)
+  (date->string (string->date dt "~Y-~m-~dT~H:~M:~S~z") "~a ~b ~d ~Y"))
 
 
 (def (comment issue comment)
