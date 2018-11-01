@@ -280,10 +280,10 @@ namespace: jira
 		    ("summary" summary)
 		    ("issuetype" (hash ("id" "3"))) ;; task == 3
 		    ("assignee" (hash ("name" .user)))
-		    ("components" [ (hash ("name" .user)) ])
+		    ("components" [ (hash ("name" component)) ])
 		    ("priority" (hash ("name" "Medium-P3")))
 		    ("labels" [
-			       (format "~a-is-working-on" .user)
+;;			       (format "~a-is-working-on" .user)
 			       ])
 		    ("timetracking" (hash
 				     ("originalEstimate" "10")))
@@ -422,12 +422,26 @@ namespace: jira
 	    (displayln "** Watch Count: " .watchCount))
 	  (let-hash .creator
 	    (displayln "** Creator: " .displayName " " .name " " .emailAddress))
-
+	  (displayln "** Subtasks: ")
+	  (if .?subtasks
+	    (begin
+	      (displayln "|ID|Summary | Status | Priority|")
+	      (displayln "|-|")
+	      (for-each
+		(lambda (s)
+		  (let-hash s
+		    (let-hash .fields
+		      (displayln "|" ..?key
+				 "|" .?summary
+				 "|" (hash-ref .status 'name)
+				 "|" (hash-ref .priority 'name)
+				 "|"))))
+	      .subtasks)))
+	  (displayln "** Comments: ")
 	  (let-hash .comment
 	    (for-each
 	      (lambda (c)
 		(let-hash c
-;;		  (displayln "*** Comment: ")
 		  (let-hash .author
 		    (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
 		  (displayln (pregexp-replace* "*" .body "@"))))
