@@ -133,7 +133,7 @@ namespace: jira
 	  (text (request-text reply)))
 
      (if (success? status)
-       (displayln status text)
+       text
        (displayln (format "Failure on post. Status:~a Text:~a~%" status text))))
    (catch (e)
      (display-exception e))))
