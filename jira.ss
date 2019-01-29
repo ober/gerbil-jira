@@ -79,6 +79,9 @@ namespace: jira
        (hash-put! config (string->symbol k) v))
      (car (yaml-load config-file)))
     (let-hash config
+      (when .?format
+	(hash-put! config 'format .format)
+	"org-mode")
       (when (and .?key .?iv .?password)
 	(let ((password (get-password-from-config .key .iv .password)))
 	  (hash-put! config 'basic-auth (make-basic-auth .?user password))
@@ -113,15 +116,19 @@ namespace: jira
       (displayln (format "Failure on put. Status:~a Text:~a~%" status text)))))
 
 (def (do-post-generic uri headers data)
-  (let* ((reply (http-post uri
-			   headers: headers
-			   data: data))
-	 (status (request-status reply))
-	 (text (request-text reply)))
-    (dp (print-curl "post" uri headers data))
-    (if (success? status)
-      text
-      (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text)))))
+  (try
+   (let* ((reply (http-post uri
+			    headers: headers
+			    data: data))
+	  (status (request-status reply))
+	  (text (request-text reply)))
+     (dp (print-curl "post" uri headers data))
+     (if (success? status)
+       text
+       (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text))))
+   (catch (e)
+;;     (thread-sleep! 500)
+     (display-exception e))))
 
 (def (do-post uri headers data)
   (dp (print-curl "post" uri headers data))
@@ -140,8 +147,6 @@ namespace: jira
 
 (def (success? status)
   (and (>= status 200) (<= status 299)))
-
-
 
 (def (default-headers basic)
   [
@@ -283,7 +288,7 @@ namespace: jira
 		    ("components" [ (hash ("name" component)) ])
 		    ("priority" (hash ("name" "Medium-P3")))
 		    ("labels" [
-;;			       (format "~a-is-working-on" .user)
+			       ;;			       (format "~a-is-working-on" .user)
 			       ])
 		    ("timetracking" (hash
 				     ("originalEstimate" "10")))
@@ -325,29 +330,73 @@ namespace: jira
 	   (data (hash
 		  ("jql" query)))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-	   (myjson (with-input-from-string results read-json)))
-      (displayln "| Key| Summary | Priority | Updated| Labels| Status| Assignee| Creator| Reporter| Issuetype | Project| watchers| Url")
-      (displayln "|-|")
+	   (myjson (with-input-from-string results read-json))
+	   (firms [ "Key"
+		    "Summary"
+		    "Priority"
+		    "Updated"
+		    "Labels"
+		    "Status"
+		    "Assignee"
+		    "Creator"
+		    "Reporter"
+		    "Issuetype "
+		    "Project"
+		    "watchers"
+		    "Url"
+		    ]))
+
+      ;;(print-header .format firms)
       (for-each
 	(lambda (p)
     	  (let-hash p
 	    (dp (hash->list .fields))
     	    (let-hash .fields
-    	      (displayln "|" ..key
-    	     		 "|" .?summary
-			 "|" (when (table? .?priority) (hash-ref .priority 'name))
-     			 "|" (when .?updated (date->custom .updated))
-			 "|" .labels
-    	     		 "|" (when (table? .?status) (hash-ref .status 'name))
-    	     		 "|" (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		 "|" (when (table? .?creator) (hash-ref .creator 'name))
-    	     		 "|" (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		 "|" (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		 "|" (when (table? .?project) (hash-ref .project 'name))
-    	     		 "|" (hash-ref .watches 'watchCount)
-    	     		 (format "|~a/browse/~a" ...url ..key)
-    	     		 "|"))))
+	      (displayln "|"
+			  ..key
+    	     		  .?summary
+			  (when (table? .?priority) (hash-ref .priority 'name))
+     			  (when .?updated (date->custom .updated))
+			  .?labels
+    	     		  (when (table? .?status) (hash-ref .status 'name))
+    	     		  (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		  (when (table? .?creator) (hash-ref .creator 'name))
+    	     		  (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		  (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		  (when (table? .?project) (hash-ref .project 'name))
+    	     		  (hash-ref .watches 'watchCount)
+    	     		  (format "~a/browse/~a" ...url ..key)
+			  "|"))))
 	(hash-ref myjson 'issues)))))
+
+(def (print-header form header)
+  (let-hash (load-config)
+    (cond
+     ((string= form "org-mode")
+      (for-each
+	(lambda (head)
+	  (display "|" head))
+	header)
+      (display "|"))
+     (else
+      (displayln "Unknown format: " .format)))))
+
+
+(def (print-row form data)
+  (if (list? data)
+    (cond
+     ((string=? form "org-mode")
+      (org-mode-print-row data))
+     (else
+      (displayln "Unknown format! " form)))))
+
+(def (org-mode-print-row data)
+  (if (list? data)
+    (for-each
+      (lambda (datum)
+	(printf "|~t" datum))
+      data)
+    (printf "|~%")))
 
 (def (date->custom dt)
   (date->string (string->date dt "~Y-~m-~dT~H:~M:~S~z") "~a ~b ~d ~Y"))
@@ -439,7 +488,7 @@ namespace: jira
 				 "|" (hash-ref .status 'name)
 				 "|" (hash-ref .priority 'name)
 				 "|"))))
-	      .subtasks)))
+		.subtasks)))
 	  (displayln "** Comments: ")
 	  (let-hash .comment
 	    (for-each
