@@ -127,7 +127,7 @@ namespace: jira
        text
        (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text))))
    (catch (e)
-;;     (thread-sleep! 500)
+     ;;     (thread-sleep! 500)
      (display-exception e))))
 
 (def (do-post uri headers data)
@@ -353,20 +353,20 @@ namespace: jira
 	    (dp (hash->list .fields))
     	    (let-hash .fields
 	      (displayln "|"
-			  ..key
-    	     		  .?summary
-			  (when (table? .?priority) (hash-ref .priority 'name))
-     			  (when .?updated (date->custom .updated))
-			  .?labels
-    	     		  (when (table? .?status) (hash-ref .status 'name))
-    	     		  (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		  (when (table? .?creator) (hash-ref .creator 'name))
-    	     		  (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		  (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		  (when (table? .?project) (hash-ref .project 'name))
-    	     		  (hash-ref .watches 'watchCount)
-    	     		  (format "~a/browse/~a" ...url ..key)
-			  "|"))))
+			 ..key
+    	     		 "|" .?summary
+			 "|" (when (table? .?priority) (hash-ref .priority 'name))
+     			 "|" (when .?updated (date->custom .updated))
+			 "|" .?labels
+    	     		 "|" (when (table? .?status) (hash-ref .status 'name))
+    	     		 "|" (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		 "|" (when (table? .?creator) (hash-ref .creator 'name))
+    	     		 "|" (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		 "|" (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		 "|" (when (table? .?project) (hash-ref .project 'name))
+    	     		 "|" (hash-ref .watches 'watchCount)
+    	     		 "|" (format "~a/browse/~a" ...url ..key)
+			 "|"))))
 	(hash-ref myjson 'issues)))))
 
 (def (print-header form header)

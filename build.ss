@@ -8,8 +8,11 @@
 
 (def build-spec
   '("jira"
-    (exe: "jira" "-ld-options" "-lyaml -lssl -lz -L/usr/local/lib/" "-cc-options" "-I/usr/local/include")
-    ))
+    (exe: "jira"
+	  "-ld-options"
+	  "-lyaml -lssl -lz -L/usr/local/lib/ -L/usr/local/opt/openssl/lib"
+	  "-cc-options"
+	  "-I/usr/local/opt/openssl/include -I/usr/local/include")))
 
 (def build-spec-static
   '("jira"
