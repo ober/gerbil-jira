@@ -79,8 +79,8 @@ namespace: jira
        (hash-put! config (string->symbol k) v))
      (car (yaml-load config-file)))
     (let-hash config
-      (when .?format
-	(hash-put! config 'format .format)
+      (when .?style
+	(hash-put! config 'style .style)
 	"org-mode")
       (when (and .?key .?iv .?password)
 	(let ((password (get-password-from-config .key .iv .password)))
@@ -374,7 +374,9 @@ namespace: jira
   (let-hash (load-config)
     (cond
      ((string=? style "org-mode")
-      (displayln "|" (string-join header "|") "|"))
+      (begin
+	(displayln "|" (string-join header "|") "|")
+	(displayln "|-|")))
      (else
       (displayln "Unknown format: " style)))))
 
