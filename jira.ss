@@ -330,6 +330,7 @@ namespace: jira
 	   (data (hash
 		  ("jql" query)))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
+	   (style (or .?style "org-mode"))
 	   (myjson (with-input-from-string results read-json))
 	   (firms [ "Key"
 		    "Summary"
@@ -346,57 +347,57 @@ namespace: jira
 		    "Url"
 		    ]))
 
-      ;;(print-header .format firms)
+      (print-header style firms)
       (for-each
 	(lambda (p)
     	  (let-hash p
 	    (dp (hash->list .fields))
     	    (let-hash .fields
-	      (displayln "|"
-			 ..key
-    	     		 "|" .?summary
-			 "|" (when (table? .?priority) (hash-ref .priority 'name))
-     			 "|" (when .?updated (date->custom .updated))
-			 "|" .?labels
-    	     		 "|" (when (table? .?status) (hash-ref .status 'name))
-    	     		 "|" (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		 "|" (when (table? .?creator) (hash-ref .creator 'name))
-    	     		 "|" (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		 "|" (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		 "|" (when (table? .?project) (hash-ref .project 'name))
-    	     		 "|" (hash-ref .watches 'watchCount)
-    	     		 "|" (format "~a/browse/~a" ...url ..key)
-			 "|"))))
+	      (print-row style
+			 [ ..key
+    	     		   .?summary
+			   (when (table? .?priority) (hash-ref .priority 'name))
+     			   (when .?updated (date->custom .updated))
+			   .?labels
+    	     		   (when (table? .?status) (hash-ref .status 'name))
+    	     		   (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		   (when (table? .?creator) (hash-ref .creator 'name))
+    	     		   (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		   (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		   (when (table? .?project) (hash-ref .project 'name))
+    	     		   (hash-ref .watches 'watchCount)
+    	     		   (format "~a/browse/~a" ...url ..key)
+			   ]))))
 	(hash-ref myjson 'issues)))))
 
-(def (print-header form header)
+(def (print-header style header)
   (let-hash (load-config)
     (cond
-     ((string= form "org-mode")
-      (for-each
-	(lambda (head)
-	  (display "|" head))
-	header)
-      (display "|"))
+     ((string=? style "org-mode")
+      (displayln "|" (string-join header "|") "|"))
      (else
-      (displayln "Unknown format: " .format)))))
+      (displayln "Unknown format: " style)))))
 
-
-(def (print-row form data)
+(def (print-row style data)
   (if (list? data)
     (cond
-     ((string=? form "org-mode")
+     ((string=? style "org-mode")
       (org-mode-print-row data))
      (else
-      (displayln "Unknown format! " form)))))
+      (displayln "Unknown format! " style)))))
 
 (def (org-mode-print-row data)
-  (if (list? data)
+  (when (list? data)
     (for-each
       (lambda (datum)
-	(printf "|~t" datum))
+	(printf "|~a" datum))
       data)
-    (printf "|~%")))
+    (displayln "|")))
+
+(def (flatten x)
+  (cond ((null? x) [])
+	((pair? x) (append (flatten (car x)) (flatten (cdr x))))
+	(else (list x))))
 
 (def (date->custom dt)
   (date->string (string->date dt "~Y-~m-~dT~H:~M:~S~z") "~a ~b ~d ~Y"))
