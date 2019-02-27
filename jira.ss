@@ -36,25 +36,27 @@ namespace: jira
   (when DEBUG
     (displayln msg)))
 
-
 (def good-ips (hash))
+
 (def interactives
   (hash
    ("assign" (hash (description: "Assign Issue to user") (usage: "assign <issue id> <user>") (count: 2)))
    ("comment" (hash (description: "Add comment to Jira issue") (usage: "comment <issue> <comment>") (count: 2)))
    ("config" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
    ("create" (hash (description: "create new jira issue") (usage: "create <component> <summary> <description>") (count: 3)))
-   ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
-   ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
+   ("editmeta" (hash (description: "Get list of fields that can be editied") (usage: "editmeta <issue name>") (count: 1)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
+   ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
    ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
+   ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
    ("metadata" (hash (description: "Get list of transitions available for issue") (usage: "metadata <issue name>") (count: 1)))
-   ("editmeta" (hash (description: "Get list of fields that can be editied") (usage: "editmeta <issue name>") (count: 1)))
    ("projects" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
+   ("q" (hash (description: "Execute one of your stored queries in your ~/.jira.yaml" ) (usage: "q <query name>") (count: 1)))
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
-   ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))))
+   ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
+   ))
 
 (def (main . args)
   (if (null? args)
@@ -86,6 +88,17 @@ namespace: jira
 	(let ((password (get-password-from-config .key .iv .password)))
 	  (hash-put! config 'basic-auth (make-basic-auth .?user password))
 	  config)))))
+
+(def (q alias)
+  (let-hash (load-config)
+    (if .?queries
+      (let ((cql (hash-get .queries alias)))
+	(if cql
+	  (search cql)
+	  (begin
+	    (displayln "Error: could not find alias " alias " in your ~/.jira.yaml")
+	    (exit 2))))
+	(displayln "Error: no queries defined in ~/.jira.yaml"))))
 
 (def (do-get-generic uri headers)
   (let* ((reply (http-get uri
