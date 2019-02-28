@@ -4,6 +4,7 @@ namespace: jira
 (export main)
 
 (declare (not optimize-dead-definitions))
+
 (import
   :gerbil/gambit
   :scheme/base
@@ -81,13 +82,12 @@ namespace: jira
        (hash-put! config (string->symbol k) v))
      (car (yaml-load config-file)))
     (let-hash config
-      (when .?style
-	(hash-put! config 'style .style)
-	"org-mode")
-      (when (and .?key .?iv .?password)
-	(let ((password (get-password-from-config .key .iv .password)))
-	  (hash-put! config 'basic-auth (make-basic-auth .?user password))
-	  config)))))
+      (hash-put! config 'style (or .?style "org-mode"))
+      (when .?secrets ;;(and .?key .?iv .?password)
+	(let-hash (u8vector->object (base64-decode .secrets))
+	  (let ((password (get-password-from-config .key .iv .password)))
+	    (hash-put! config 'basic-auth (make-basic-auth ..?user password))
+	    config))))))
 
 (def (q alias)
   (let-hash (load-config)
@@ -587,7 +587,7 @@ namespace: jira
 
 (def (config)
   (let-hash (load-config)
-    (displayln "Please enter your password for your user")
+    (displayln "What is your password?: ")
     (let* ((password (read-line (current-input-port)))
 	   (cipher (make-aes-256-ctr-cipher))
 	   (iv (random-bytes (cipher-iv-length cipher)))
@@ -595,12 +595,16 @@ namespace: jira
 	   (encrypted-password (encrypt cipher key iv password))
 	   (enc-pass-store (u8vector->base64-string encrypted-password))
 	   (iv-store (u8vector->base64-string iv))
-	   (key-store (u8vector->base64-string key)))
+	   (key-store (u8vector->base64-string key))
+	   (secrets (base64-encode (object->u8vector
+				    (hash
+				     (password enc-pass-store)
+				     (iv iv-store)
+				     (key key-store))))))
+
       (displayln "Add the following lines to your " config-file)
       (displayln "-----------------------------------------")
-      (displayln "password: " enc-pass-store)
-      (displayln "iv: " iv-store)
-      (displayln "key: " key-store)
+      (displayln "secrets: " secrets)
       (displayln "-----------------------------------------"))))
 
 (def (get-password-from-config key iv password)
