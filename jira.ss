@@ -140,7 +140,6 @@ namespace: jira
        text
        (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text))))
    (catch (e)
-     ;;     (thread-sleep! 500)
      (display-exception e))))
 
 (def (do-post uri headers data)
@@ -205,19 +204,6 @@ namespace: jira
 	   (results (do-get-generic url (default-headers .basic-auth)))
 	   (myjson (from-json results)))
       (displayln results))))
-;; (displayln "|id|name|to name|to state|")
-;; (displayln "|--|--|")
-;; (let-hash myjson
-;;   (for-each
-;; 	(lambda (t)
-;; 	  (let-hash t
-;; 	    (let-hash .to
-;; 	    (displayln "|" ..id
-;; 		       "|" ..name
-;; 		       "|" .name
-;; 		       "|" .description
-;; 		       "|"))))
-;;   .transitions))))
 
 (def (transition issue trans)
   (let-hash (load-config)
@@ -442,16 +428,11 @@ namespace: jira
 	  (displayln "** Last Viewed: " .lastViewed)
 	  (displayln "** Created: " .created)
 
-	  (let-hash .status
-	    (displayln "** Status: " .name))
-	  (let-hash .reporter
-	    (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
-	  (let-hash .project
-	    (displayln "** Project: " .name))
-	  (let-hash .watches
-	    (displayln "** Watch Count: " .watchCount))
-	  (let-hash .creator
-	    (displayln "** Creator: " .displayName " " .name " " .emailAddress))
+	  (let-hash .status (displayln "** Status: " .name))
+	  (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
+	  (let-hash .project (displayln "** Project: " .name))
+	  (let-hash .watches (displayln "** Watch Count: " .watchCount))
+	  (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
 	  (displayln "** Subtasks: ")
 	  (if .?subtasks
 	    (begin
