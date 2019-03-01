@@ -98,7 +98,7 @@ namespace: jira
 	  (begin
 	    (displayln "Error: could not find alias " alias " in your ~/.jira.yaml")
 	    (exit 2))))
-	(displayln "Error: no queries defined in ~/.jira.yaml"))))
+      (displayln "Error: no queries defined in ~/.jira.yaml"))))
 
 (def (do-get-generic uri headers)
   (let* ((reply (http-get uri
@@ -242,39 +242,6 @@ namespace: jira
 	    (lambda (c)
 	      (displayln (stringify-hash c)))
 	    .components))))))
-;; (displayln "|" ..id
-;; 	   "|" (hash-ref .assignee 'emailAddress)
-;; 	   "|" (hash-ref .assignee 'displayName)
-;; 	   "|" (hash-ref .reporter 'displayName)
-;; 	   "|" (hash-ref .watches 'watchCount)
-;; 	   "|" .description
-;; 	   "|" .summary
-;; 	   "|" (hash-ref .priority 'name)
-;; 	   "|" (hash-ref .status 'name)
-;; 	   "|"
-;; 	   )))))
-
-;; (def (create issue)
-;;   (let-hash (load-config)
-;;     (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-;; 	   (results (do-get-generic url (default-headers .basic-auth)))
-;; 	   (myjson (from-json results)))
-;;       (displayln "|id|assignee email|assignee name|reporter|watchers|description|summary|priority|status|")
-;;       (displayln "|--|--|")
-
-;;       (let-hash myjson
-;; 	(let-hash .fields
-;; 	  (displayln "|" ..id
-;; 		     "|" (hash-ref .assignee 'emailAddress)
-;; 		     "|" (hash-ref .assignee 'displayName)
-;; 		     "|" (hash-ref .reporter 'displayName)
-;; 		     "|" (hash-ref .watches 'watchCount)
-;; 		     "|" .description
-;; 		     "|" .summary
-;; 		     "|" (hash-ref .priority 'name)
-;; 		     "|" (hash-ref .status 'name)
-;; 		     "|"
-;; 		     ))))))
 
 (def (stringify-hash h)
   (let ((results []))
@@ -285,7 +252,6 @@ namespace: jira
 	   (set! results (append results (list (format " ~a->" k) (format "~a   " v)))))
 	 h)
 	(append-strings results))
-      ;;        (pregexp-replace "\n" (append-strings results) "\t"))
       "N/A")))
 
 (def (create component summary description)
@@ -301,7 +267,7 @@ namespace: jira
 		    ("components" [ (hash ("name" component)) ])
 		    ("priority" (hash ("name" "Medium-P3")))
 		    ("labels" [
-			       ;;			       (format "~a-is-working-on" .user)
+			       ;; (format "~a-is-working-on" .user) ;; some default tag here
 			       ])
 		    ("timetracking" (hash
 				     ("originalEstimate" "10")))
@@ -435,7 +401,6 @@ namespace: jira
 	   (data (hash
 		  ("name" user)))
 	   (results (do-put url (default-headers .basic-auth) (json-object->string data))))
-      ;;(myjson (with-input-from-string results read-json)))
       (displayln results))))
 
 (def (user pattern)
@@ -463,9 +428,6 @@ namespace: jira
 	   (myjson (from-json results)))
       (let-hash myjson
 	(let-hash .fields
-	  ;;    	(let-hash .parent
-	  ;;    	  (displayln "key: " .key)
-	  ;;    	  (let-hash .fields
 	  (displayln "** Summary: " .summary)
 	  (let-hash .status
 	    (displayln "** Description: " .description)
