@@ -83,7 +83,7 @@ namespace: jira
      (car (yaml-load config-file)))
     (let-hash config
       (hash-put! config 'style (or .?style "org-mode"))
-      (when .?secrets ;;(and .?key .?iv .?password)
+      (when .?secrets
 	(let-hash (u8vector->object (base64-decode .secrets))
 	  (let ((password (get-password-from-config .key .iv .password)))
 	    (hash-put! config 'basic-auth (make-basic-auth ..?user password))
