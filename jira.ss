@@ -86,8 +86,8 @@ namespace: jira
       (when .?secrets
 	(let-hash (u8vector->object (base64-decode .secrets))
 	  (let ((password (get-password-from-config .key .iv .password)))
-	    (hash-put! config 'basic-auth (make-basic-auth ..?user password))
-	    config))))))
+	    (hash-put! config 'basic-auth (make-basic-auth ..?user password))))))
+    config))
 
 (def (q alias)
   (let-hash (load-config)
@@ -184,6 +184,7 @@ namespace: jira
     (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (results (do-get-generic url (default-headers .basic-auth)))
 	   (myjson (from-json results)))
+      (displayln (type-of results))
       (displayln "|id|name|to name|to state|")
       (displayln "|--|--|")
       (let-hash myjson
