@@ -1,0 +1,14 @@
+--- # this is an example ~/.jira.yaml
+url: https://jira.example.com:8443
+user: myuser
+style: org-mode
+
+queries:
+  myopen: "assignee = currentUser() AND status != Closed order by status DESC"
+  cbm: "status changed by currentUser() order by updated desc"
+  viewed: "issuekey in issueHistory() order by lastViewed DESC"
+  assigned: "assignee = currentUser() order by updated DESC"
+  2weeks: "updated >= -2w and issuekey in issueHistory() order by lastViewed DESC"
+  vweek: "issuekey in issueHistory() ORDER BY lastViewed DESC"
+  meopen: 'reporter = currentUser() order by created DESC'
+  ref: '(summary ~ currentUser() OR description ~ currentUser() OR comment ~ currentUser()) and updatedDate >= -7d'
