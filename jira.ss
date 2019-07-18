@@ -4,6 +4,7 @@ namespace: jira
 (export main)
 
 (declare (not optimize-dead-definitions))
+(def version "0.02")
 
 (import
   :gerbil/gambit
@@ -14,6 +15,7 @@ namespace: jira
   :std/format
   :std/generic
   :std/generic/dispatch
+  :std/iter
   :std/misc/channel
   :std/misc/ports
   :std/net/address
@@ -26,11 +28,11 @@ namespace: jira
   :std/text/base64
   :std/text/json
   :std/text/utf8
-  :std/text/yaml
-  )
+  :std/text/yaml)
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
+(import (rename-in :gerbil/gambit/os (time mytime)))
 (def program-name "jira")
 (def DEBUG (getenv "DEBUG" #f))
 (def (dp msg)
@@ -44,15 +46,18 @@ namespace: jira
    ("assign" (hash (description: "Assign Issue to user") (usage: "assign <issue id> <user>") (count: 2)))
    ("comment" (hash (description: "Add comment to Jira issue") (usage: "comment <issue> <comment>") (count: 2)))
    ("config" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
-   ("create" (hash (description: "create new jira issue") (usage: "create <component> <summary> <description>") (count: 3)))
+   ("create" (hash (description: "create new jira issue") (usage: "create <summary> <description>") (count: 2)))
    ("editmeta" (hash (description: "Get list of fields that can be editied") (usage: "editmeta <issue name>") (count: 1)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
    ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
    ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
    ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
-   ("metadata" (hash (description: "Get list of transitions available for issue") (usage: "metadata <issue name>") (count: 1)))
-   ("projects" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
+   ("metadata" (hash (description: "Get definitions of fields available for issue.") (usage: "metadata <issue name>") (count: 1)))
+   ("projects" (hash (description: "List all projects") (usage: "projects") (count: 0)))
+   ("properties" (hash (description: "Fetch all properties available for issue") (usage: "properties <issue id>") (count: 1)))
+   ("property" (hash (description: "Fetch all properties available for issue") (usage: "properties <issue id>") (count: 1)))
+   ("priorities" (hash (description: "List priorities available for issues") (usage: "priorities") (count: 0)))
    ("q" (hash (description: "Execute one of your stored queries in your ~/.jira.yaml" ) (usage: "q <query name>") (count: 1)))
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
@@ -188,16 +193,14 @@ namespace: jira
       (displayln "|id|name|to name|to state|")
       (displayln "|--|--|")
       (let-hash myjson
-	(for-each
-	  (lambda (t)
-	    (let-hash t
-	      (let-hash .to
-		(displayln "|" ..id
-			   "|" ..name
-			   "|" .name
-			   "|" .description
-			   "|"))))
-	  .transitions)))))
+	(for (transition .transitions)
+	     (let-hash transition
+	       (let-hash .to
+		 (displayln "|" ..id
+			    "|" ..name
+			    "|" .name
+			    "|" .description
+			    "|"))))))))
 
 (def (metadata issue)
   (let-hash (load-config)
@@ -225,10 +228,8 @@ namespace: jira
 
       (let-hash myjson
 	(let-hash .fields
-	  (for-each
-	    (lambda (c)
-	      (displayln (stringify-hash c)))
-	    .components))))))
+	  (for (component .components)
+	       (displayln (stringify-hash component))))))))
 
 (def (stringify-hash h)
   (let ((results []))
@@ -241,7 +242,7 @@ namespace: jira
 	(append-strings results))
       "N/A")))
 
-(def (create component summary description)
+(def (create summary description)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
 	   (data (hash
@@ -251,7 +252,7 @@ namespace: jira
 		    ("summary" summary)
 		    ("issuetype" (hash ("id" "3"))) ;; task == 3
 		    ("assignee" (hash ("name" .user)))
-		    ("components" [ (hash ("name" component)) ])
+		    ;;	    ("components" [ (hash ("name" component)) ])
 		    ("priority" (hash ("name" "Medium-P3")))
 		    ("labels" [
 			       ;; (format "~a-is-working-on" .user) ;; some default tag here
@@ -287,7 +288,8 @@ namespace: jira
 
 (def (search query)
   (let-hash (load-config)
-    (let* ((query
+    (let* ((outs [])
+	   (query
 	    (if (or (string-contains query "=")
 		    (string-contains query "("))
 	      (format "~a" query)
@@ -296,8 +298,8 @@ namespace: jira
 	   (data (hash
 		  ("jql" query)))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-	   (style (or .?style "org-mode"))
-	   (myjson (with-input-from-string results read-json))
+	   (myjson (from-json results))
+	   (issues (let-hash myjson .issues))
 	   (firms [ "Key"
 		    "Summary"
 		    "Priority"
@@ -312,37 +314,85 @@ namespace: jira
 		    "watchers"
 		    "Url"
 		    ]))
+      (set! outs (cons firms outs))
+      (for (p issues)
+    	   (let-hash p
+	     (dp (hash->list .fields))
+    	     (let-hash .fields
+	       (set! outs (cons
+			   [ ..key
+    	     		     .?summary
+			     (when (table? .?priority) (hash-ref .priority 'name))
+     			     (when .?updated (date->custom .updated))
+			     .?labels
+    	     		     (when (table? .?status) (hash-ref .status 'name))
+    	     		     (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		     (when (table? .?creator) (hash-ref .creator 'name))
+    	     		     (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		     (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		     (when (table? .?project) (hash-ref .project 'name))
+    	     		     (hash-ref .watches 'watchCount)
+    	     		     (format "~a/browse/~a" ...url ..key)
+			     ] outs)))))
+      (style-output outs))))
 
-      (print-header style firms)
-      (for-each
-	(lambda (p)
-    	  (let-hash p
-	    (dp (hash->list .fields))
-    	    (let-hash .fields
-	      (print-row style
-			 [ ..key
-    	     		   .?summary
-			   (when (table? .?priority) (hash-ref .priority 'name))
-     			   (when .?updated (date->custom .updated))
-			   .?labels
-    	     		   (when (table? .?status) (hash-ref .status 'name))
-    	     		   (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		   (when (table? .?creator) (hash-ref .creator 'name))
-    	     		   (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		   (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		   (when (table? .?project) (hash-ref .project 'name))
-    	     		   (hash-ref .watches 'watchCount)
-    	     		   (format "~a/browse/~a" ...url ..key)
-			   ]))))
-	(hash-ref myjson 'issues)))))
+(def (format-string-size string size)
+  (unless (string? string)
+    (set! string (format "~a" string)))
+  (let* ((string (string-trim-both string))
+	 (our-size (string-length string))
+	 (delta (if (> size our-size)
+		  (- size our-size)
+		  0)))
+;;    (displayln "fss: delta: " delta " string: " string " our-size: " our-size " size: " size)
+    (format " ~a~a" string (make-string delta #\space))))
+
+(def (style-output infos)
+  (let-hash (load-config)
+    (when (list? infos)
+      (let* ((sizes (hash))
+	     (data (reverse infos))
+	     (header (car data))
+	     (rows (cdr data)))
+	(for (head header)
+	     (hash-put! sizes head (string-length head)))
+	(for (row rows)
+	     (let (count 0)
+	       (for (column row)
+		    (let* ((col-name (nth count header))
+			   (current-size (hash-ref sizes col-name))
+			   (this-size (if (string? column) (string-length column) (string-length (format "~a" column)))))
+		      (when (> this-size current-size)
+			(hash-put! sizes col-name this-size))
+;;		      (displayln "colname: " col-name " col: " count " current-size: " current-size " this-size: " this-size " column: " column)
+		      (set! count (1+ count))))))
+
+	(for (head header)
+	     (display (format "| ~a" (format-string-size head (hash-get sizes head)))))
+
+	;; print header
+	(displayln "|")
+	(let ((count 0))
+	  (for (head header)
+	       (let ((sep (if (= count 0) "|" "+")))
+		 (display (format "~a~a" sep (make-string (+ 2 (hash-get sizes (nth count header))) #\-))))
+	       (set! count (1+ count))))
+	(displayln "|")
+
+	(for (row rows)
+	     (let (count 0)
+	       (for (col row)
+		    (display (format "|~a " (format-string-size col (hash-ref sizes (nth count header)))))
+		    (set! count (1+ count))))
+	     (displayln "|"))
+	))))
 
 (def (print-header style header)
   (let-hash (load-config)
     (cond
      ((string=? style "org-mode")
-      (begin
-	(displayln "|" (string-join header "|") "|")
-	(displayln "|-|")))
+      (displayln "| " (string-join header " | ") " |")
+      (displayln "|-|"))
      (else
       (displayln "Unknown format: " style)))))
 
@@ -356,10 +406,8 @@ namespace: jira
 
 (def (org-mode-print-row data)
   (when (list? data)
-    (for-each
-      (lambda (datum)
-	(printf "|~a" datum))
-      data)
+    (for (datum data)
+	 (printf "| ~a " datum))
     (displayln "|")))
 
 (def (flatten x)
@@ -394,26 +442,24 @@ namespace: jira
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
 	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
+	   (users (from-json results)))
       (displayln "|User | Email| Full Name | Active | Timezone| Profile |")
       (displayln "|-|")
-      (for-each
-	(lambda (n)
-	  (let-hash n
-	    (displayln "|" .name
-		       "|" .emailAddress
-		       "|" .displayName
-		       "|" .active
-		       "|" .timeZone
-		       "|" .self "|")))
-	myjson))))
+      (for (user users)
+	   (let-hash user
+	     (displayln "|" .name
+			"|" .emailAddress
+			"|" .displayName
+			"|" .active
+			"|" .timeZone
+			"|" .self "|"))))))
 
 (def (issue id)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a" .url id))
 	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
-      (let-hash myjson
+	   (issue (from-json results)))
+      (let-hash issue
 	(let-hash .fields
 	  (displayln "** Summary: " .summary)
 	  (let-hash .status
@@ -435,49 +481,70 @@ namespace: jira
 	  (let-hash .watches (displayln "** Watch Count: " .watchCount))
 	  (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
 	  (displayln "** Subtasks: ")
-	  (if .?subtasks
-	    (begin
-	      (displayln "|ID|Summary | Status | Priority|")
-	      (displayln "|-|")
-	      (for-each
-		(lambda (s)
-		  (let-hash s
-		    (let-hash .fields
-		      (displayln "|" ..?key
-				 "|" .?summary
-				 "|" (hash-ref .status 'name)
-				 "|" (hash-ref .priority 'name)
-				 "|"))))
-		.subtasks)))
+	  (when .?subtasks
+	    (displayln "|ID|Summary | Status | Priority|")
+	    (displayln "|-|")
+	    (for (subtask .subtasks)
+		 (let-hash subtask
+		   (let-hash .fields
+		     (displayln "|" ..?key
+				"|" .?summary
+				"|" (hash-ref .status 'name)
+				"|" (hash-ref .priority 'name)
+				"|")))))
+
 	  (displayln "** Comments: ")
 	  (let-hash .comment
-	    (for-each
-	      (lambda (c)
-		(let-hash c
-		  (let-hash .author
-		    (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
-		  (displayln (pregexp-replace* "*" .body "@"))))
-	      .comments))
-
+	    (for (comment .comments)
+		 (let-hash comment
+		   (let-hash .author
+		     (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
+		   (displayln (pregexp-replace* "*" .body "@")))))
 	  (let-hash .assignee
 	    (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))
+
+(def (priorities)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/priority" .url))
+	   (results (do-get-generic url (default-headers .basic-auth)))
+	   (priorities (from-json results)))
+      (displayln "|Name|Id|Description|Status Color| Url|Icon Url|")
+      (displayln "|-|")
+      (for (priority priorities)
+	   (let-hash priority
+	     (displayln "|" .?name
+			"|" .?id
+			"|" .?description
+			"|" .?statusColor
+			"|" .?self
+			"|" .?iconUrl))))))
 
 (def (projects)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/project" .url))
 	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
+	   (projects (from-json results)))
       (displayln "|id|key|name|")
       (displayln "|-|")
-      (for-each
-	(lambda (p)
-	  (let-hash p
-	    (displayln "|" .id
-		       "|" .key
-		       "|" .name
-		       "|" .projectTypeKey
-		       "|")))
-	myjson))))
+      (for (project projects)
+	   (let-hash project
+	     (displayln "|" .id
+			"|" .key
+			"|" .name
+			"|" .projectTypeKey
+			"|"))))))
+
+(def (properties issue)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/properties" .url issue))
+	   (results (do-get-generic url (default-headers .basic-auth))))
+      (displayln results))))
+
+(def (property issue)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/properties/sd.initial.field.set" .url issue))
+	   (results (do-get-generic url (default-headers .basic-auth))))
+      (displayln results))))
 
 (def (print-curl type uri headers data)
   ;;(displayln headers)
@@ -521,12 +588,11 @@ namespace: jira
     (exit 2)))
 
 (def (usage)
+  (displayln (format "Jira: version ~a" version))
   (displayln "Usage: jira <verb>")
   (displayln "Verbs:")
-  (for-each
-    (lambda (k)
-      (displayln (format "~a: ~a" k (hash-get (hash-get interactives k) description:))))
-    (sort! (hash-keys interactives) string<?))
+  (for (verb (sort! (hash-keys interactives) string<?))
+       (displayln (format "~a: ~a" verb (hash-get (hash-get interactives verb) description:))))
   (exit 2))
 
 (def (config)
@@ -558,3 +624,11 @@ namespace: jira
     (base64-string->u8vector key)
     (base64-string->u8vector iv)
     (base64-string->u8vector password))))
+
+(def (nth n l)
+  "Implement nth for gerbil. fetch n argument from list"
+  (if (or (> n (length l)) (< n 0))
+    (error "Index out of bounds.")
+    (if (eq? n 0)
+      (car l)
+      (nth (- n 1) (cdr l)))))
