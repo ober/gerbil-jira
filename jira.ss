@@ -4,6 +4,7 @@ namespace: jira
 (export main)
 
 (declare (not optimize-dead-definitions))
+(def version "0.02")
 
 (import
   :gerbil/gambit
@@ -191,7 +192,7 @@ namespace: jira
       (displayln "|id|name|to name|to state|")
       (displayln "|--|--|")
       (let-hash myjson
-	(for (transition transitions)
+	(for (transition .transitions)
 	     (let-hash transition
 	       (let-hash .to
 		 (displayln "|" ..id
@@ -313,39 +314,62 @@ namespace: jira
 		    "watchers"
 		    "Url"
 		    ]))
-
+      (displayln (hash->list field-sizes))
       (print-header style firms field-sizes)
-	(for (p issues)
-    	     (let-hash p
-	       (dp (hash->list .fields))
-    	       (let-hash .fields
-		 (print-row style field-sizes
-			    [ ..key
-    	     		      .?summary
-			      (when (table? .?priority) (hash-ref .priority 'name))
-     			      (when .?updated (date->custom .updated))
-			      .?labels
-    	     		      (when (table? .?status) (hash-ref .status 'name))
-    	     		      (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		      (when (table? .?creator) (hash-ref .creator 'name))
-    	     		      (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		      (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		      (when (table? .?project) (hash-ref .project 'name))
-    	     		      (hash-ref .watches 'watchCount)
-    	     		      (format "~a/browse/~a" ...url ..key)
-			      ])))))))
+      (for (p issues)
+    	   (let-hash p
+	     (dp (hash->list .fields))
+    	     (let-hash .fields
+	       (print-row style field-sizes
+			  [ ..key
+    	     		    .?summary
+			    (when (table? .?priority) (hash-ref .priority 'name))
+     			    (when .?updated (date->custom .updated))
+			    .?labels
+    	     		    (when (table? .?status) (hash-ref .status 'name))
+    	     		    (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		    (when (table? .?creator) (hash-ref .creator 'name))
+    	     		    (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		    (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		    (when (table? .?project) (hash-ref .project 'name))
+    	     		    (hash-ref .watches 'watchCount)
+    	     		    (format "~a/browse/~a" ...url ..key)
+			    ])))))))
 
 
 (def (get-field-sizes items)
-  (displayln "items is " items))
+  "Given a list of hashes"
+  (when (list? items)
+    (let ((sizes (hash)))
+      (for (item items)
+	   (when (table? item)
+	     (let-hash item
+  	       (hash-for-each
+  		(lambda (k v)
+		  (cond
+  		   ((string? v)
+		      (let ((current (hash-get sizes k))
+  			    (this-length (string-length v)))
+			(if current
+			  (when (> this-length current)
+			    (hash-put! sizes k this-length))
+			  (hash-put! sizes k this-length))))
+  		   ((table? v)
+  	       	    (let ((current (hash-get sizes k))
+  	       		   (this-length (string-length (stringify-hash v))))
+		      (if current
+			(when (> this-length current)
+  	       		  (hash-put! sizes k this-length))
+			  (hash-put! sizes k this-length))))))
+  		.fields))))
+  	 sizes)))
 
 (def (print-header style header field-sizes)
   (let-hash (load-config)
     (cond
      ((string=? style "org-mode")
-      (begin
-	(displayln "| " (string-join header " | ") " |")
-	(displayln "|-|")))
+      (displayln "| " (string-join header " | ") " |")
+      (displayln "|-|"))
      (else
       (displayln "Unknown format: " style)))))
 
@@ -411,8 +435,8 @@ namespace: jira
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a" .url id))
 	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
-      (let-hash myjson
+	   (issue (from-json results)))
+      (let-hash issue
 	(let-hash .fields
 	  (displayln "** Summary: " .summary)
 	  (let-hash .status
@@ -435,16 +459,16 @@ namespace: jira
 	  (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
 	  (displayln "** Subtasks: ")
 	  (when .?subtasks
-	      (displayln "|ID|Summary | Status | Priority|")
-	      (displayln "|-|")
-	      (for (subtask .subtasks)
-		   (let-hash subtask
-		     (let-hash .fields
-		       (displayln "|" ..?key
-				  "|" .?summary
-				  "|" (hash-ref .status 'name)
-				  "|" (hash-ref .priority 'name)
-				  "|"))))))
+	    (displayln "|ID|Summary | Status | Priority|")
+	    (displayln "|-|")
+	    (for (subtask .subtasks)
+		 (let-hash subtask
+		   (let-hash .fields
+		     (displayln "|" ..?key
+				"|" .?summary
+				"|" (hash-ref .status 'name)
+				"|" (hash-ref .priority 'name)
+				"|")))))
 
 	  (displayln "** Comments: ")
 	  (let-hash .comment
@@ -454,7 +478,7 @@ namespace: jira
 		     (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
 		   (displayln (pregexp-replace* "*" .body "@")))))
 	  (let-hash .assignee
-	    (displayln "** Assignee: " .displayName " " .name " " .emailAddress))))))
+	    (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))
 
 (def (priorities)
   (let-hash (load-config)
@@ -465,12 +489,12 @@ namespace: jira
       (displayln "|-|")
       (for (priority priorities)
 	   (let-hash priority
-	    (displayln "|" .?name
-		       "|" .?id
-		       "|" .?description
-		       "|" .?statusColor
-		       "|" .?self
-		       "|" .?iconUrl))))))
+	     (displayln "|" .?name
+			"|" .?id
+			"|" .?description
+			"|" .?statusColor
+			"|" .?self
+			"|" .?iconUrl))))))
 
 (def (projects)
   (let-hash (load-config)
@@ -541,6 +565,7 @@ namespace: jira
     (exit 2)))
 
 (def (usage)
+  (displayln (format "Jira: version ~a" version))
   (displayln "Usage: jira <verb>")
   (displayln "Verbs:")
   (for (verb (sort! (hash-keys interactives) string<?))
