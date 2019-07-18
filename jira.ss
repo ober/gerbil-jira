@@ -24,6 +24,7 @@ namespace: jira
   :std/srfi/13
   :std/srfi/19
   :std/srfi/95
+  :std/srfi/121
   :std/sugar
   :std/text/base64
   :std/text/json
@@ -32,6 +33,7 @@ namespace: jira
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
+(import (rename-in :gerbil/gambit/os (time mytime)))
 (def program-name "jira")
 (def DEBUG (getenv "DEBUG" #f))
 (def (dp msg)
@@ -287,7 +289,8 @@ namespace: jira
 
 (def (search query)
   (let-hash (load-config)
-    (let* ((query
+    (let* ((outs [])
+	   (query
 	    (if (or (string-contains query "=")
 		    (string-contains query "("))
 	      (format "~a" query)
@@ -296,10 +299,8 @@ namespace: jira
 	   (data (hash
 		  ("jql" query)))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-	   (style (or .?style "org-mode"))
-	   (myjson (with-input-from-string results read-json))
+	   (myjson (from-json results))
 	   (issues (let-hash myjson .issues))
-	   (field-sizes (get-field-sizes issues))
 	   (firms [ "Key"
 		    "Summary"
 		    "Priority"
@@ -314,57 +315,68 @@ namespace: jira
 		    "watchers"
 		    "Url"
 		    ]))
-      (displayln (hash->list field-sizes))
-      (print-header style firms field-sizes)
+      (set! outs (cons firms outs))
       (for (p issues)
     	   (let-hash p
 	     (dp (hash->list .fields))
     	     (let-hash .fields
-	       (print-row style field-sizes
-			  [ ..key
-    	     		    .?summary
-			    (when (table? .?priority) (hash-ref .priority 'name))
-     			    (when .?updated (date->custom .updated))
-			    .?labels
-    	     		    (when (table? .?status) (hash-ref .status 'name))
-    	     		    (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		    (when (table? .?creator) (hash-ref .creator 'name))
-    	     		    (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		    (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		    (when (table? .?project) (hash-ref .project 'name))
-    	     		    (hash-ref .watches 'watchCount)
-    	     		    (format "~a/browse/~a" ...url ..key)
-			    ])))))))
+	       (set! outs (cons
+			   [ ..key
+    	     		     .?summary
+			     (when (table? .?priority) (hash-ref .priority 'name))
+     			     (when .?updated (date->custom .updated))
+			     .?labels
+    	     		     (when (table? .?status) (hash-ref .status 'name))
+    	     		     (when (table? .?assignee) (hash-ref .assignee 'name))
+    	     		     (when (table? .?creator) (hash-ref .creator 'name))
+    	     		     (when (table? .?reporter) (hash-ref .reporter 'name))
+    	     		     (when (table? .?issuetype) (hash-ref .issuetype 'name))
+    	     		     (when (table? .?project) (hash-ref .project 'name))
+    	     		     (hash-ref .watches 'watchCount)
+    	     		     (format "~a/browse/~a" ...url ..key)
+			     ] outs)))))
+      (style-output outs))))
+
+(def (style-output infos)
+  (let-hash (load-config)
+    (when (list? infos)
+      (let ((data (reverse-list infos))
+	    (header (car data))
+	    (rows (cdr data)))
+	(displayln "header: " header)
+	(for (row rows)
+	     (display "|")
+	     (for (col row)
+		  (display (format "| ~a" col)))
+	     (displayln "|"))))))
 
 
-(def (get-field-sizes items)
-  "Given a list of hashes"
-  (when (list? items)
-    (let ((sizes (hash)))
-      (for (item items)
-	   (when (table? item)
-	     (let-hash item
-  	       (hash-for-each
-  		(lambda (k v)
-		  (cond
-  		   ((string? v)
-		      (let ((current (hash-get sizes k))
-  			    (this-length (string-length v)))
-			(if current
-			  (when (> this-length current)
-			    (hash-put! sizes k this-length))
-			  (hash-put! sizes k this-length))))
-  		   ((table? v)
-  	       	    (let ((current (hash-get sizes k))
-  	       		   (this-length (string-length (stringify-hash v))))
-		      (if current
-			(when (> this-length current)
-  	       		  (hash-put! sizes k this-length))
-			  (hash-put! sizes k this-length))))))
-  		.fields))))
-  	 sizes)))
+;; (def (get-field-sizes infos)
+;;   (let ((sizes (hash)))
+;;     (for (info infos)
+;; 	 (when (table? item)
+;; 	   (let-hash item
+;;   	     (hash-for-each
+;;   	      (lambda (k v)
+;; 		(cond
+;;   		 ((string? v)
+;; 		  (let ((current (hash-get sizes k))
+;;   			(this-length (string-length v)))
+;; 		    (if current
+;; 		      (when (> this-length current)
+;; 			(hash-put! sizes k this-length))
+;; 		      (hash-put! sizes k this-length))))
+;;   		 ((table? v)
+;;   	       	  (let ((current (hash-get sizes k))
+;;   	       		(this-length (string-length (stringify-hash v))))
+;; 		    (if current
+;; 		      (when (> this-length current)
+;;   	       		(hash-put! sizes k this-length))
+;; 		      (hash-put! sizes k this-length))))))
+;;   	      .fields))))
+;;     sizes))
 
-(def (print-header style header field-sizes)
+(def (print-header style header)
   (let-hash (load-config)
     (cond
      ((string=? style "org-mode")
@@ -373,7 +385,7 @@ namespace: jira
      (else
       (displayln "Unknown format: " style)))))
 
-(def (print-row style field-sizes data)
+(def (print-row style data)
   (if (list? data)
     (cond
      ((string=? style "org-mode")
