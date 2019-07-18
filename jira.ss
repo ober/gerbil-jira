@@ -10,12 +10,12 @@ namespace: jira
   :gerbil/gambit
   :scheme/base
   :std/crypto/cipher
-  :std/iter
   :std/crypto/etc
   :std/crypto/libcrypto
   :std/format
   :std/generic
   :std/generic/dispatch
+  :std/iter
   :std/misc/channel
   :std/misc/ports
   :std/net/address
@@ -24,7 +24,6 @@ namespace: jira
   :std/srfi/13
   :std/srfi/19
   :std/srfi/95
-  :std/srfi/121
   :std/sugar
   :std/text/base64
   :std/text/json
@@ -337,18 +336,43 @@ namespace: jira
 			     ] outs)))))
       (style-output outs))))
 
+(def (format-string-size string size)
+  (let* ((our-size (string-length string))
+	 (delta (- size (1+ our-size))))
+    (if (< delta 1)
+      (format " ~a " string)
+      (format " ~a~a" string (make-string delta #\space)))))
+
 (def (style-output infos)
   (let-hash (load-config)
     (when (list? infos)
-      (let ((data (reverse-list infos))
-	    (header (car data))
-	    (rows (cdr data)))
+      (let* ((sizes (hash))
+	     (data (reverse infos))
+	     (header (car data))
+	     (rows (cdr data)))
+	(for (head header)
+	     (hash-put! sizes head 0))
 	(displayln "header: " header)
 	(for (row rows)
-	     (display "|")
+	     (let (count 0)
+	       (for (column row)
+		    (let* ((col-name (nth count header))
+			   (current-size (hash-ref sizes col-name))
+			   (this-size (if (string? column) (string-length column) 0)))
+		      (when (> this-size current-size)
+			(hash-put! sizes col-name this-size))
+		      (displayln "colname: " col-name " col: " count " current-size: " current-size " this-size: " this-size " column: " column)
+		      (set! count (1+ count))))))
+
+	(for (head header)
+	     (display "|" (format-string-size head (string-length head)))
+	     (displayln "|"))
+
+	(for (row rows)
 	     (for (col row)
-		  (display (format "| ~a" col)))
-	     (displayln "|"))))))
+		  (display "|" (format-string-size col (string-length col))))
+	     (displayln "|"))
+	))))
 
 
 ;; (def (get-field-sizes infos)
@@ -613,3 +637,11 @@ namespace: jira
     (base64-string->u8vector key)
     (base64-string->u8vector iv)
     (base64-string->u8vector password))))
+
+(def (nth n l)
+  "Implement nth for gerbil. fetch n argument from list"
+  (if (or (> n (length l)) (< n 0))
+    (error "Index out of bounds.")
+    (if (eq? n 0)
+      (car l)
+      (nth (- n 1) (cdr l)))))
