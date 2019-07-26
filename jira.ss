@@ -186,21 +186,16 @@ namespace: jira
 
 (def (transitions issue)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+    (let* (( outs [["id" "name" "toname" "tostate"]])
+	   (url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (results (do-get-generic url (default-headers .basic-auth)))
 	   (myjson (from-json results)))
-      (displayln (type-of results))
-      (displayln "|id|name|to name|to state|")
-      (displayln "|--|--|")
       (let-hash myjson
 	(for (transition .transitions)
 	     (let-hash transition
 	       (let-hash .to
-		 (displayln "|" ..id
-			    "|" ..name
-			    "|" .name
-			    "|" .description
-			    "|"))))))))
+		 (set! outs (cons [ ..id ..name .name .description ] outs))))))
+      (style-output outs))))
 
 (def (metadata issue)
   (let-hash (load-config)
@@ -300,20 +295,21 @@ namespace: jira
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (from-json results))
 	   (issues (let-hash myjson .issues))
-	   (firms [ "Key"
-		    "Summary"
-		    "Priority"
-		    "Updated"
-		    "Labels"
-		    "Status"
-		    "Assignee"
-		    "Creator"
-		    "Reporter"
-		    "Issuetype "
-		    "Project"
-		    "watchers"
-		    "Url"
-		    ]))
+	   (firms ;;(or .?search-fields
+		      [ "Key"
+			"Summary"
+			"Priority"
+			"Updated"
+			"Labels"
+			"Status"
+			"Assignee"
+			"Creator"
+			"Reporter"
+			"Issuetype "
+			"Project"
+			"watchers"
+			"Url"
+			] )) ;;)
       (set! outs (cons firms outs))
       (for (p issues)
     	   (let-hash p
@@ -355,6 +351,7 @@ namespace: jira
 	     (header (car data))
 	     (rows (cdr data)))
 	(for (head header)
+	     (unless (string? head) (displayln "head is not string: " head) (exit 2))
 	     (hash-put! sizes head (string-length head)))
 	(for (row rows)
 	     (let (count 0)
