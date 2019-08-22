@@ -1,4 +1,4 @@
-;; -*- Gerbil -*-
+; -*- Gerbil -*-
 package: jira
 namespace: jira
 (export main)
@@ -46,13 +46,12 @@ namespace: jira
    ("assign" (hash (description: "Assign Issue to user") (usage: "assign <issue id> <user>") (count: 2)))
    ("comment" (hash (description: "Add comment to Jira issue") (usage: "comment <issue> <comment>") (count: 2)))
    ("config" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
-   ("test-pass" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
+   ("parse-metas" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
    ("create" (hash (description: "create new jira issue") (usage: "create <summary> <description>") (count: 2)))
-   ("createmeta" (hash (description: "Get Meta information on fields available for the creation of new issues") (usage: "createmeta <Project> <Issue type Name>") (count: 2)))
-   ("createmetas" (hash (description: "Get Meta information on all fields available for the creation of new issues") (usage: "createmetas") (count: 0)))
    ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
    ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
+   ("get-issuetype-id" (hash (description: "Get Jira issuetype id from name") (usage: "get-issuetype-id <issuetype name>") (count: 1)))
    ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
    ("index-summary" (hash (description: "Get Index Summary Details") (usage: "index-summary") (count: 0)))
@@ -204,11 +203,11 @@ namespace: jira
 		 (set! outs (cons [ ..id ..name .name .description ] outs))))))
       (style-output outs))))
 
-(def (createmetas)
-  (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/createmeta" .url ))
-	   (results (from-json (jira-get url default-headers .basic-auth))))
-      (yaml-dump "./createmetas.yaml" results))))
+(def (createmetas project basic-auth url)
+  (displayln "createmetas project: " project)
+  (let* ((url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a" url project))
+         (results (from-json (jira-get url default-headers basic-auth))))
+    results))
 
 (def (transition issue trans)
   (let-hash (load-config)
@@ -267,7 +266,7 @@ namespace: jira
 				     ("originalEstimate" originalestimate)))
 		    ("description" description)
 		    ("duedate" duedate)))))
-;;	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+           ;;	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
            ;;	   (myjson (from-json results)))
            )
       (displayln "not running query"))))
@@ -282,9 +281,9 @@ namespace: jira
 
 (def (interpol-from-env str)
   (let* ((ruby (pregexp "#\\{([a-zA-Z0-9]*)\\}"))
-        (vars (remove-bad-matches (match-regexp ruby str) "#"))
-        (newstr (pregexp-replace* ruby str "~a"))
-        (set-vars []))
+         (vars (remove-bad-matches (match-regexp ruby str) "#"))
+         (newstr (pregexp-replace* ruby str "~a"))
+         (set-vars []))
 
     (for (var vars)
          (let ((val (getenv var #f)))
@@ -304,20 +303,31 @@ namespace: jira
       (let* ((pp (pregexp-match-positions pat str start n))
              (ix-pr (pregexp-match pat str start n)))
         (if ix-pr
-          (let ((pos (cdar pp)))
+          (let ((pos (+ 1 (cdar pp))))
             (set! ix-prs (flatten (cons ix-pr ix-prs)))
             (if (< pos n)
               (lp pos)
               ix-prs))
           (reverse ix-prs))))))
 
-(def (expand-template template)
+(def (error-print msg (code 2))
+  (displayln "Error: " msg)
+  (exit code))
 
+(def (converge-template template metas)
+  (if (not (table? template))
+    (error-print "Not a table")
+    (let-hash template
+      (hash
+       (project (get-project-id .project-key metas))
+       (summary (interpol-from-env .summary))
 
+       ))))
+;;       (issuetype
 
 (def (interpolate-vars template)
   (displayln "template is " (hash->list template))
-  (hash (project
+  (hash (project [])
         (summary "some big summary")
         (issuetype 3)
         (assignee "me")
@@ -327,9 +337,13 @@ namespace: jira
         (description "big description here")
         (duedate "08-21-1971")))
 
-(def (execute-template issue)
-  (if (table? issue)
-    (let-hash issue
+(def (execute-template template metas)
+  (if (not (table? template))
+    (begin
+      (displayln "Error: execute-template passed non-table :"  template)
+      (exit 2)))
+  (let ((converged (converge-template template metas)))
+    (let-hash converged
       (create-issue .project
                     .summary
                     .issuetype
@@ -338,49 +352,63 @@ namespace: jira
                     .labels
                     .originalestimate
                     .description
-                    .duedate))
-    (displayln "Execute-table got a non-table: " issue)))
+                    .duedate))))
 
 (def (run creation)
   (let-hash (load-config)
-    (if .?creations
-      (let ((creature (hash-get .creations creation)))
-        (if creature
-          (execute-template creature)
-          (begin
-	    (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
-	    (exit 2))))
-        (displayln "Error: no create templates defined in ~/.jira.yaml under creations"))))
+    (let ((metas (createmetas .project-key .basic-auth .url)))
+      (if .?creations
+        (let ((creature (hash-get .creations creation)))
+          (if creature
+            (execute-template creature metas)
+            (begin
+              (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
+              (exit 2))))
+        (displayln "Error: no create templates defined in ~/.jira.yaml under creations")))))
 
 (def (create summary description)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue" .url))
-	   (data (hash
-		  ("fields"
-		   (hash
-		    ("project" (hash ("id" "10071")))
-		    ("summary" summary)
-		    ("issuetype" (hash ("id" "3"))) ;; task == 3
-		    ("assignee" (hash ("name" .user)))
-		    ;;	    ("components" [ (hash ("name" component)) ])
-		    ("priority" (hash ("name" "Medium-P3")))
-		    ("labels" [
-			       ;; (format "~a-is-working-on" .user) ;; some default tag here
-			       ])
-		    ("timetracking" (hash
-				     ("originalEstimate" "10")))
-		    ("description" description)
-		    ("duedate" "2018-05-15")))))
-	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
-	   (myjson (from-json results)))
+    (let* ((metas (createmetas .project .basic-auth .url))
+           (url (format "~a/rest/api/2/issue" .url))
+           (data (hash
+                  ("fields"
+                   (hash
+                    ("project" (hash ("id" "10071")))
+                    ("summary" summary)
+                    ("issuetype" (hash ("id" "3"))) ;; task == 3
+                    ("assignee" (hash ("name" .user)))
+                    ;;	    ("components" [ (hash ("name" component)) ])
+                    ("priority" (hash ("name" "Medium-P3")))
+                    ("labels" [
+                               ;; (format "~a-is-working-on" .user) ;; some default tag here
+                               ])
+                    ("timetracking" (hash
+                                     ("originalEstimate" "10")))
+                    ("description" description)
+                    ("duedate" "2018-05-15")))))
+           (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+           (myjson (from-json results)))
       (displayln results))))
 
-(def (createmeta project issuetype)
+(def (get-project-id name metas)
+  (let-hash metas
+    .id))
+
+(def (get-issuetype-id name metas)
+  (let-hash metas
+    (let ((id 0))
+      (for (project .projects)
+           (let-hash project
+             (when (string=? .name name)
+               (set! id .id))))
+      id)))
+
+(def (parse-metas)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a&issuetypeNames=~a" .url project issuetype))
-           (results (from-json (do-get-generic url (default-headers .basic-auth)))))
-      (yaml-dump "./createmeta.yaml" results))))
-;;      (displaln results))))
+    (let ((metas (createmetas .project-key .basic-auth .url)))
+       (let-hash metas
+         (for (project .projects)
+              (displayln (stringify-hash project)))))))
 
 (def (fields)
   (let-hash (load-config)
@@ -391,18 +419,18 @@ namespace: jira
 (def (editmeta issue)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-	   (results (do-get-generic url (default-headers .basic-auth))))
+           (results (do-get-generic url (default-headers .basic-auth))))
       (display results))))
 
 (def (label issue label)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-	   (data (hash
-		  ("fields"
-		   (hash
-		    ("labels" [ label ])))))
-	   (results (do-put url (default-headers .basic-auth) (json-object->string data)))
-	   (myjson (from-json results)))
+           (data (hash
+                  ("fields"
+                   (hash
+                    ("labels" [ label ])))))
+           (results (do-put url (default-headers .basic-auth) (json-object->string data)))
+           (myjson (from-json results)))
       (displayln results))))
 
 (def (make-web-safe string)
@@ -412,105 +440,105 @@ namespace: jira
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
-	   (query
-	    (if (or (string-contains query "=")
-		    (string-contains query "("))
-	      (format "~a" query)
-	      (format "text ~~ '~a'" query)))
-	   (url (format "~a/rest/api/2/search" .url))
-	   (data (hash
-		  ("jql" query)))
-	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-	   (myjson (from-json results))
-	   (issues (let-hash myjson .issues))
-	   (firms ;;(or .?search-fields
-		      [ "Key"
-			"Summary"
-			"Priority"
-			"Updated"
-			"Labels"
-			"Status"
-			"Assignee"
-			"Creator"
-			"Reporter"
-			"Issuetype "
-			"Project"
-			"watchers"
-			"Url"
-			] )) ;;)
+           (query
+            (if (or (string-contains query "=")
+                    (string-contains query "("))
+              (format "~a" query)
+              (format "text ~~ '~a'" query)))
+           (url (format "~a/rest/api/2/search" .url))
+           (data (hash
+                  ("jql" query)))
+           (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
+           (myjson (from-json results))
+           (issues (let-hash myjson .issues))
+           (firms ;;(or .?search-fields
+            [ "Key"
+              "Summary"
+              "Priority"
+              "Updated"
+              "Labels"
+              "Status"
+              "Assignee"
+              "Creator"
+              "Reporter"
+              "Issuetype "
+              "Project"
+              "watchers"
+              "Url"
+              ] )) ;;)
       (set! outs (cons firms outs))
       (for (p issues)
-    	   (let-hash p
-	     (dp (hash->list .fields))
-    	     (let-hash .fields
-	       (set! outs (cons
-			   [ ..key
-    	     		     .?summary
-			     (when (table? .?priority) (hash-ref .priority 'name))
-     			     (when .?updated (date->custom .updated))
-			     .?labels
-    	     		     (when (table? .?status) (hash-ref .status 'name))
-    	     		     (when (table? .?assignee) (hash-ref .assignee 'name))
-    	     		     (when (table? .?creator) (hash-ref .creator 'name))
-    	     		     (when (table? .?reporter) (hash-ref .reporter 'name))
-    	     		     (when (table? .?issuetype) (hash-ref .issuetype 'name))
-    	     		     (when (table? .?project) (hash-ref .project 'name))
-    	     		     (hash-ref .watches 'watchCount)
-    	     		     (format "~a/browse/~a" ...url ..key)
-			     ] outs)))))
+           (let-hash p
+             (dp (hash->list .fields))
+             (let-hash .fields
+               (set! outs (cons
+                           [ ..key
+                             .?summary
+                             (when (table? .?priority) (hash-ref .priority 'name))
+                             (when .?updated (date->custom .updated))
+                             .?labels
+                             (when (table? .?status) (hash-ref .status 'name))
+                             (when (table? .?assignee) (hash-ref .assignee 'name))
+                             (when (table? .?creator) (hash-ref .creator 'name))
+                             (when (table? .?reporter) (hash-ref .reporter 'name))
+                             (when (table? .?issuetype) (hash-ref .issuetype 'name))
+                             (when (table? .?project) (hash-ref .project 'name))
+                             (hash-ref .watches 'watchCount)
+                             (format "~a/browse/~a" ...url ..key)
+                             ] outs)))))
       (style-output outs))))
 
 (def (format-string-size string size)
   (unless (string? string)
     (set! string (format "~a" string)))
   (let* ((string (string-trim-both string))
-	 (our-size (string-length string))
-	 (delta (if (> size our-size)
-		  (- size our-size)
-		  0)))
-;;    (displayln "fss: delta: " delta " string: " string " our-size: " our-size " size: " size)
+         (our-size (string-length string))
+         (delta (if (> size our-size)
+                  (- size our-size)
+                  0)))
+    ;;    (displayln "fss: delta: " delta " string: " string " our-size: " our-size " size: " size)
     (format " ~a~a" string (make-string delta #\space))))
 
 (def (style-output infos)
   (let-hash (load-config)
     (when (list? infos)
       (let* ((sizes (hash))
-	     (data (reverse infos))
-	     (header (car data))
-	     (rows (cdr data)))
-	(for (head header)
-	     (unless (string? head) (displayln "head is not string: " head) (exit 2))
-	     (hash-put! sizes head (string-length head)))
-	(for (row rows)
-	     (let (count 0)
-	       (for (column row)
-		    (let* ((col-name (nth count header))
-			   (current-size (hash-ref sizes col-name))
-			   (this-size (if (string? column) (string-length column) (string-length (format "~a" column)))))
-		      (when (> this-size current-size)
-			(hash-put! sizes col-name this-size))
+             (data (reverse infos))
+             (header (car data))
+             (rows (cdr data)))
+        (for (head header)
+             (unless (string? head) (displayln "head is not string: " head) (exit 2))
+             (hash-put! sizes head (string-length head)))
+        (for (row rows)
+             (let (count 0)
+               (for (column row)
+                    (let* ((col-name (nth count header))
+                           (current-size (hash-ref sizes col-name))
+                           (this-size (if (string? column) (string-length column) (string-length (format "~a" column)))))
+                      (when (> this-size current-size)
+                        (hash-put! sizes col-name this-size))
                       ;;		      (displayln "colname: " col-name " col: " count " current-size: " current-size " this-size: " this-size " column: " column)
-		      (set! count (1+ count))))))
+                      (set! count (1+ count))))))
 
-	(for (head header)
-	     (display (format "| ~a" (format-string-size head (hash-get sizes head)))))
+        (for (head header)
+             (display (format "| ~a" (format-string-size head (hash-get sizes head)))))
 
-	;; print header
-	(displayln "|")
-	(let ((count 0))
-	  (for (head header)
-	       (let ((sep (if (= count 0) "|" "+")))
-		 (display (format "~a~a" sep (make-string (+ 2 (hash-get sizes (nth count header))) #\-))))
-	       (set! count (1+ count))))
-	(displayln "|")
+        ;; print header
+        (displayln "|")
+        (let ((count 0))
+          (for (head header)
+               (let ((sep (if (= count 0) "|" "+")))
+                 (display (format "~a~a" sep (make-string (+ 2 (hash-get sizes (nth count header))) #\-))))
+               (set! count (1+ count))))
+        (displayln "|")
 
-	(for (row rows)
-	     (let (count 0)
-	       (for (col row)
-		    (display (format "|~a " (format-string-size col (hash-ref sizes (nth count header)))))
-		    (set! count (1+ count))))
-	     (displayln "|"))
-	))))
+        (for (row rows)
+             (let (count 0)
+               (for (col row)
+                    (display (format "|~a " (format-string-size col (hash-ref sizes (nth count header)))))
+                    (set! count (1+ count))))
+             (displayln "|"))
+        ))))
 
 (def (print-header style header)
   (let-hash (load-config)
@@ -532,13 +560,13 @@ namespace: jira
 (def (org-mode-print-row data)
   (when (list? data)
     (for (datum data)
-	 (printf "| ~a " datum))
+         (printf "| ~a " datum))
     (displayln "|")))
 
 (def (flatten x)
   (cond ((null? x) [])
-	((pair? x) (append (flatten (car x)) (flatten (cdr x))))
-	(else (list x))))
+        ((pair? x) (append (flatten (car x)) (flatten (cdr x))))
+        (else (list x))))
 
 (def (date->custom dt)
   (date->string (string->date dt "~Y-~m-~dT~H:~M:~S~z") "~a ~b ~d ~Y"))
@@ -546,10 +574,10 @@ namespace: jira
 (def (comment issue comment)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/comment" .url issue))
-	   (data (hash
-		  ("body" comment)))
-	   (out-js (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-	   (results (with-input-from-string out-js read-json)))
+           (data (hash
+                  ("body" comment)))
+           (out-js (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
+           (results (with-input-from-string out-js read-json)))
       (process-results results))))
 
 (def (process-results results)
@@ -558,91 +586,91 @@ namespace: jira
 (def (assign issue user)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
-	   (data (hash
-		  ("name" user)))
-	   (results (do-put url (default-headers .basic-auth) (json-object->string data))))
+           (data (hash
+                  ("name" user)))
+           (results (do-put url (default-headers .basic-auth) (json-object->string data))))
       (displayln results))))
 
 (def (user pattern)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (users (from-json results)))
+           (results (do-get-generic url (default-headers .basic-auth)))
+           (users (from-json results)))
       (displayln "|User | Email| Full Name | Active | Timezone| Profile |")
       (displayln "|-|")
       (for (user users)
-	   (let-hash user
-	     (displayln "|" .name
-			"|" .emailAddress
-			"|" .displayName
-			"|" .active
-			"|" .timeZone
-			"|" .self "|"))))))
+           (let-hash user
+             (displayln "|" .name
+                        "|" .emailAddress
+                        "|" .displayName
+                        "|" .active
+                        "|" .timeZone
+                        "|" .self "|"))))))
 
 (def (issue id)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a" .url id))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (issue (from-json results)))
+           (results (do-get-generic url (default-headers .basic-auth)))
+           (issue (from-json results)))
       (let-hash issue
-	(let-hash .fields
-	  (displayln "** Summary: " .summary)
-	  (let-hash .status
-	    (displayln "** Description: " .description)
-	    (displayln "** State: " .name))
-	  (let-hash .priority
-	    (displayln "** Priority: " .name))
-	  (let-hash .issuetype
-	    (displayln "** Issue Type: " .name))
+        (let-hash .fields
+          (displayln "** Summary: " .summary)
+          (let-hash .status
+            (displayln "** Description: " .description)
+            (displayln "** State: " .name))
+          (let-hash .priority
+            (displayln "** Priority: " .name))
+          (let-hash .issuetype
+            (displayln "** Issue Type: " .name))
 
-	  (displayln "** Description: " .description)
-	  (displayln "** Summary: " .summary)
-	  (displayln "** Last Viewed: " .lastViewed)
-	  (displayln "** Created: " .created)
+          (displayln "** Description: " .description)
+          (displayln "** Summary: " .summary)
+          (displayln "** Last Viewed: " .lastViewed)
+          (displayln "** Created: " .created)
 
-	  (let-hash .status (displayln "** Status: " .name))
-	  (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
-	  (let-hash .project (displayln "** Project: " .name))
-	  (let-hash .watches (displayln "** Watch Count: " .watchCount))
-	  (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
-	  (displayln "** Subtasks: ")
-	  (when .?subtasks
-	    (displayln "|ID|Summary | Status | Priority|")
-	    (displayln "|-|")
-	    (for (subtask .subtasks)
-		 (let-hash subtask
-		   (let-hash .fields
-		     (displayln "|" ..?key
-				"|" .?summary
-				"|" (hash-ref .status 'name)
-				"|" (hash-ref .priority 'name)
-				"|")))))
+          (let-hash .status (displayln "** Status: " .name))
+          (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
+          (let-hash .project (displayln "** Project: " .name))
+          (let-hash .watches (displayln "** Watch Count: " .watchCount))
+          (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
+          (displayln "** Subtasks: ")
+          (when .?subtasks
+            (displayln "|ID|Summary | Status | Priority|")
+            (displayln "|-|")
+            (for (subtask .subtasks)
+                 (let-hash subtask
+                   (let-hash .fields
+                     (displayln "|" ..?key
+                                "|" .?summary
+                                "|" (hash-ref .status 'name)
+                                "|" (hash-ref .priority 'name)
+                                "|")))))
 
-	  (displayln "** Comments: ")
-	  (let-hash .comment
-	    (for (comment .comments)
-		 (let-hash comment
-		   (let-hash .author
-		     (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
-		   (displayln (pregexp-replace* "*" .body "@")))))
-	  (let-hash .assignee
-	    (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))
+          (displayln "** Comments: ")
+          (let-hash .comment
+            (for (comment .comments)
+                 (let-hash comment
+                   (let-hash .author
+                     (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
+                   (displayln (pregexp-replace* "*" .body "@")))))
+          (let-hash .assignee
+            (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))
 
 (def (priorities)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/priority" .url))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (priorities (from-json results)))
+           (results (do-get-generic url (default-headers .basic-auth)))
+           (priorities (from-json results)))
       (displayln "|Name|Id|Description|Status Color| Url|Icon Url|")
       (displayln "|-|")
       (for (priority priorities)
-	   (let-hash priority
-	     (displayln "|" .?name
-			"|" .?id
-			"|" .?description
-			"|" .?statusColor
-			"|" .?self
-			"|" .?iconUrl))))))
+           (let-hash priority
+             (displayln "|" .?name
+                        "|" .?id
+                        "|" .?description
+                        "|" .?statusColor
+                        "|" .?self
+                        "|" .?iconUrl))))))
 
 
 (def (jira-get url headers basic)
@@ -657,54 +685,54 @@ namespace: jira
 (def (members project)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/group/member?groupname=~a&includeInactiveUsers=false" .url project))
-	   (results (jira-get url default-headers .basic-auth)))
+           (results (jira-get url default-headers .basic-auth)))
       (display results))))
 
 (def (projects)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/project" .url))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (projects (from-json results)))
+           (results (do-get-generic url (default-headers .basic-auth)))
+           (projects (from-json results)))
       (displayln "|id|key|name|")
       (displayln "|-|")
       (for (project projects)
-	   (let-hash project
-	     (displayln "|" .id
-			"|" .key
-			"|" .name
-			"|" .projectTypeKey
-			"|"))))))
+           (let-hash project
+             (displayln "|" .id
+                        "|" .key
+                        "|" .name
+                        "|" .projectTypeKey
+                        "|"))))))
 
 (def (properties issue)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/properties" .url issue))
-	   (results (do-get-generic url (default-headers .basic-auth))))
+           (results (do-get-generic url (default-headers .basic-auth))))
       (displayln results))))
 
 (def (property issue)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/properties/sd.initial.field.set" .url issue))
-	   (results (do-get-generic url (default-headers .basic-auth))))
+           (results (do-get-generic url (default-headers .basic-auth))))
       (displayln results))))
 
 (def (print-curl type uri headers data)
   ;;(displayln headers)
   (let ((heads "Content-type: application/json")
-	(do-curl (getenv "DEBUG" #f)))
+        (do-curl (getenv "DEBUG" #f)))
     (when do-curl
       (cond
        ((string=? type "get")
-	(if (string=? "" data)
-	  (displayln (format "curl -X GET -H \'~a\' ~a" heads uri))
-	  (displayln (format "curl -X GET -H \'~a\' -d \'~a\' ~a" heads data uri))))
+        (if (string=? "" data)
+          (displayln (format "curl -X GET -H \'~a\' ~a" heads uri))
+          (displayln (format "curl -X GET -H \'~a\' -d \'~a\' ~a" heads data uri))))
        ((string=? type "put")
-	(displayln (format "curl -X PUT -H \'~a\' -d \'~a\' ~a" heads data uri)))
+        (displayln (format "curl -X PUT -H \'~a\' -d \'~a\' ~a" heads data uri)))
        ((string=? type "post")
-	(displayln (format "curl -X POST -H \'~a\' -d \'~a\' ~a" heads data uri)))
+        (displayln (format "curl -X POST -H \'~a\' -d \'~a\' ~a" heads data uri)))
        ((string=? type "delete")
-	(displayln (format "curl -X DELETE -H \'~a\' -d \'~a\' ~a" heads data uri)))
+        (displayln (format "curl -X DELETE -H \'~a\' -d \'~a\' ~a" heads data uri)))
        (else
-	(displayln "unknown format " type))))))
+        (displayln "unknown format " type))))))
 
 (def (get-new-ip uri host)
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
@@ -719,8 +747,8 @@ namespace: jira
 
 (def (make-basic-auth user password)
   (format "Basic ~a"
-	  (base64-encode
-	   (string->utf8 (format "~a:~a" user password)))))
+          (base64-encode
+           (string->utf8 (format "~a:~a" user password)))))
 
 (def (usage-verb verb)
   (let ((howto (hash-get interactives verb)))
@@ -751,18 +779,18 @@ namespace: jira
 (def (config)
   (let-hash (load-config)
     (let* ((password (read-password "What is your password?: "))
-	   (cipher (make-aes-256-ctr-cipher))
-	   (iv (random-bytes (cipher-iv-length cipher)))
-	   (key (random-bytes (cipher-key-length cipher)))
-	   (encrypted-password (encrypt cipher key iv password))
-	   (enc-pass-store (u8vector->base64-string encrypted-password))
-	   (iv-store (u8vector->base64-string iv))
-	   (key-store (u8vector->base64-string key))
-	   (secrets (base64-encode (object->u8vector
-				    (hash
-				     (password enc-pass-store)
-				     (iv iv-store)
-				     (key key-store))))))
+           (cipher (make-aes-256-ctr-cipher))
+           (iv (random-bytes (cipher-iv-length cipher)))
+           (key (random-bytes (cipher-key-length cipher)))
+           (encrypted-password (encrypt cipher key iv password))
+           (enc-pass-store (u8vector->base64-string encrypted-password))
+           (iv-store (u8vector->base64-string iv))
+           (key-store (u8vector->base64-string key))
+           (secrets (base64-encode (object->u8vector
+                                    (hash
+                                     (password enc-pass-store)
+                                     (iv iv-store)
+                                     (key key-store))))))
 
       (displayln "Add the following lines to your " config-file)
       (displayln "-----------------------------------------")
