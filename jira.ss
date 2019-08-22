@@ -4,7 +4,7 @@ namespace: jira
 (export main)
 
 (declare (not optimize-dead-definitions))
-(def version "0.02")
+(def version "0.03")
 
 (import
   :gerbil/gambit
@@ -46,19 +46,26 @@ namespace: jira
    ("assign" (hash (description: "Assign Issue to user") (usage: "assign <issue id> <user>") (count: 2)))
    ("comment" (hash (description: "Add comment to Jira issue") (usage: "comment <issue> <comment>") (count: 2)))
    ("config" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
+   ("test-pass" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
    ("create" (hash (description: "create new jira issue") (usage: "create <summary> <description>") (count: 2)))
-   ("editmeta" (hash (description: "Get list of fields that can be editied") (usage: "editmeta <issue name>") (count: 1)))
+   ("createmeta" (hash (description: "Get Meta information on fields available for the creation of new issues") (usage: "createmeta <Project> <Issue type Name>") (count: 2)))
+   ("createmetas" (hash (description: "Get Meta information on all fields available for the creation of new issues") (usage: "createmetas") (count: 0)))
+   ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
    ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
    ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
+   ("index-summary" (hash (description: "Get Index Summary Details") (usage: "index-summary") (count: 0)))
+   ("issuetype" (hash (description: "Get information on issuetype") (usage: "issuetype <issuetype id>") (count: 1)))
    ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
    ("metadata" (hash (description: "Get definitions of fields available for issue.") (usage: "metadata <issue name>") (count: 1)))
+   ("members" (hash (description: "Get list of members of a given project.") (usage: "members <Project Name>") (count: 1)))
    ("projects" (hash (description: "List all projects") (usage: "projects") (count: 0)))
    ("properties" (hash (description: "Fetch all properties available for issue") (usage: "properties <issue id>") (count: 1)))
    ("property" (hash (description: "Fetch all properties available for issue") (usage: "properties <issue id>") (count: 1)))
    ("priorities" (hash (description: "List priorities available for issues") (usage: "priorities") (count: 0)))
    ("q" (hash (description: "Execute one of your stored queries in your ~/.jira.yaml" ) (usage: "q <query name>") (count: 1)))
+   ("run" (hash (description: "Execute one of your stored creations in your ~/.jira.yaml" ) (usage: "run <creation name>") (count: 1)))
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
    ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
@@ -186,7 +193,7 @@ namespace: jira
 
 (def (transitions issue)
   (let-hash (load-config)
-    (let* (( outs [["id" "name" "toname" "tostate"]])
+    (let* ((outs [["id" "name" "toname" "tostate"]])
 	   (url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (results (do-get-generic url (default-headers .basic-auth)))
 	   (myjson (from-json results)))
@@ -197,12 +204,11 @@ namespace: jira
 		 (set! outs (cons [ ..id ..name .name .description ] outs))))))
       (style-output outs))))
 
-(def (metadata issue)
+(def (createmetas)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/editmeta" .url issue))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
-      (displayln results))))
+    (let* ((url (format "~a/rest/api/2/issue/createmeta" .url ))
+	   (results (from-json (jira-get url default-headers .basic-auth))))
+      (yaml-dump "./createmetas.yaml" results))))
 
 (def (transition issue trans)
   (let-hash (load-config)
@@ -237,6 +243,115 @@ namespace: jira
 	(append-strings results))
       "N/A")))
 
+(def (issuetype type)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issuetype/~a" .url type))
+           (results (do-get-generic url (default-headers .basic-auth))))
+      (displayln results))))
+
+;;com.atlassian.jira.rest.v2.issue.IssueResource.createIssue_post
+(def (create-issue project summary issuetype assignee priority labels originalestimate description duedate)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue" .url))
+	   (data (hash
+		  ("fields"
+		   (hash
+		    ("project" (hash ("id" project)))
+		    ("summary" summary)
+		    ("issuetype" (hash ("id" issuetype))) ;; task == 3
+		    ("assignee" (hash ("name" assignee)))
+		    ;;	    ("components" [ (hash ("name" component)) ])
+		    ("priority" (hash ("name" priority)))
+		    ("labels" [ labels ])
+		    ("timetracking" (hash
+				     ("originalEstimate" originalestimate)))
+		    ("description" description)
+		    ("duedate" duedate)))))
+;;	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+           ;;	   (myjson (from-json results)))
+           )
+      (displayln "not running query"))))
+;;      (displayln results))))
+
+(def (remove-bad-matches vars omit)
+  (let ((goodies []))
+    (for (var vars)
+         (unless (string-contains var omit)
+           (set! goodies (flatten (cons var goodies)))))
+    (reverse goodies)))
+
+(def (interpol-from-env str)
+  (let* ((ruby (pregexp "#\\{([a-zA-Z0-9]*)\\}"))
+        (vars (remove-bad-matches (match-regexp ruby str) "#"))
+        (newstr (pregexp-replace* ruby str "~a"))
+        (set-vars []))
+
+    (for (var vars)
+         (let ((val (getenv var #f)))
+           (if (not val)
+             (begin
+               (displayln "Error: Variable " var " is used in the template, but not defined in the environment")
+               (exit 2))
+             (set! set-vars (cons val set-vars)))))
+
+    (apply format newstr (reverse set-vars))))
+
+(def (match-regexp pat str . opt-args)
+  "Like pregexp-match but for all matches til end of str"
+  (let ((n (string-length str))
+        (ix-prs []))
+    (let lp ((start 0))
+      (let* ((pp (pregexp-match-positions pat str start n))
+             (ix-pr (pregexp-match pat str start n)))
+        (if ix-pr
+          (let ((pos (cdar pp)))
+            (set! ix-prs (flatten (cons ix-pr ix-prs)))
+            (if (< pos n)
+              (lp pos)
+              ix-prs))
+          (reverse ix-prs))))))
+
+(def (expand-template template)
+
+
+
+(def (interpolate-vars template)
+  (displayln "template is " (hash->list template))
+  (hash (project
+        (summary "some big summary")
+        (issuetype 3)
+        (assignee "me")
+        (priority 2)
+        (labels [ "big issue"])
+        (originalestimate 10)
+        (description "big description here")
+        (duedate "08-21-1971")))
+
+(def (execute-template issue)
+  (if (table? issue)
+    (let-hash issue
+      (create-issue .project
+                    .summary
+                    .issuetype
+                    .assignee
+                    .priority
+                    .labels
+                    .originalestimate
+                    .description
+                    .duedate))
+    (displayln "Execute-table got a non-table: " issue)))
+
+(def (run creation)
+  (let-hash (load-config)
+    (if .?creations
+      (let ((creature (hash-get .creations creation)))
+        (if creature
+          (execute-template creature)
+          (begin
+	    (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
+	    (exit 2))))
+        (displayln "Error: no create templates defined in ~/.jira.yaml under creations"))))
+
 (def (create summary description)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
@@ -258,6 +373,19 @@ namespace: jira
 		    ("duedate" "2018-05-15")))))
 	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (from-json results)))
+      (displayln results))))
+
+(def (createmeta project issuetype)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a&issuetypeNames=~a" .url project issuetype))
+           (results (from-json (do-get-generic url (default-headers .basic-auth)))))
+      (yaml-dump "./createmeta.yaml" results))))
+;;      (displaln results))))
+
+(def (fields)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/field" .url))
+           (results (do-get-generic url (default-headers .basic-auth))))
       (displayln results))))
 
 (def (editmeta issue)
@@ -361,7 +489,7 @@ namespace: jira
 			   (this-size (if (string? column) (string-length column) (string-length (format "~a" column)))))
 		      (when (> this-size current-size)
 			(hash-put! sizes col-name this-size))
-;;		      (displayln "colname: " col-name " col: " count " current-size: " current-size " this-size: " this-size " column: " column)
+                      ;;		      (displayln "colname: " col-name " col: " count " current-size: " current-size " this-size: " this-size " column: " column)
 		      (set! count (1+ count))))))
 
 	(for (head header)
@@ -516,6 +644,22 @@ namespace: jira
 			"|" .?self
 			"|" .?iconUrl))))))
 
+
+(def (jira-get url headers basic)
+  (do-get-generic url (default-headers basic)))
+
+
+(def (index-summary)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/index/summary" .url)))
+      (displayln (jira-get url default-headers .basic-auth)))))
+
+(def (members project)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/group/member?groupname=~a&includeInactiveUsers=false" .url project))
+	   (results (jira-get url default-headers .basic-auth)))
+      (display results))))
+
 (def (projects)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/project" .url))
@@ -592,10 +736,21 @@ namespace: jira
        (displayln (format "~a: ~a" verb (hash-get (hash-get interactives verb) description:))))
   (exit 2))
 
+(def (read-password prompt)
+  (let ((password ""))
+    (displayln prompt)
+    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
+    (set! password (read-line))
+    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
+    password))
+
+(def (test-pass)
+  (let ((pass (read-password "this is a test:")))
+    (displayln "done, and pass is " pass)))
+
 (def (config)
   (let-hash (load-config)
-    (displayln "What is your password?: ")
-    (let* ((password (read-line (current-input-port)))
+    (let* ((password (read-password "What is your password?: "))
 	   (cipher (make-aes-256-ctr-cipher))
 	   (iv (random-bytes (cipher-iv-length cipher)))
 	   (key (random-bytes (cipher-key-length cipher)))
