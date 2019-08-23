@@ -248,27 +248,36 @@ namespace: jira
       (displayln results))))
 
 ;;com.atlassian.jira.rest.v2.issue.IssueResource.createIssue_post
-(def (create-issue project summary issuetype assignee priority labels originalestimate description duedate)
-  (displayln "proj: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate)
+(def (create-issue project summary issuetype assignee priority labels originalestimate description duedate parent)
+  (displayln "proj: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate " parent: " parent)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
-	   (data (hash
-		  ("fields"
-		   (hash
-		    ("project" (hash ("id" project)))
-		    ("summary" summary)
-		    ("issuetype" (hash ("id" issuetype))) ;; task == 3
-		    ("assignee" (hash ("name" assignee)))
-		    ;;	    ("components" [ (hash ("name" component)) ])
-		    ("priority" (hash ("name" priority)))
-		    ("labels" [])
-		    ("timetracking" (hash
-				     ("originalEstimate" originalestimate)))
-		    ("description" description)
-		    ("duedate" duedate)))))
-           (results (do-post url (default-headers .basic-auth) (json-object->string data)))
-           (myjson (from-json results)))
-      (displayln results))))
+           (fields (hash
+                    ("project" (hash ("id" project)))
+                    ("summary" summary)
+                    ("issuetype" (hash ("id" issuetype)))
+                    ("assignee" (hash ("name" assignee)))
+                    ;;	    ("components" [ (hash ("name" component)) ])
+                    ("priority" (hash ("name" priority)))
+                    ("labels" [])
+                    ("timetracking" (hash
+                                     ("originalEstimate" originalestimate)))
+                    ("description" description)
+                    ("duedate" duedate))))
+
+      (when parent
+        (hash-put! fields "parent" (hash ("id" parent))))
+
+      (when (= (string->number issuetype) 5)
+        (hash-put! fields "customfield_10496" summary))
+
+      (let* ((data (hash (fields fields)))
+            (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+            (myjson (from-json results)))
+        (if (table? myjson)
+          (let-hash myjson
+            .id)
+          results)))))
 
 (def (remove-bad-matches vars omit)
   (let ((goodies []))
@@ -328,34 +337,27 @@ namespace: jira
      (description (interpol-from-env (hash-get template "description")))
      (duedate (interpol-from-env (hash-get template "duedate"))))))
 
-(def (interpolate-vars template)
-  (displayln "template is " (hash->list template))
-  (hash (project [])
-        (summary "some big summary")
-        (issuetype 3)
-        (assignee "me")
-        (priority 2)
-        (labels [ "big issue"])
-        (originalestimate 10)
-        (description "big description here")
-        (duedate "08-21-1971")))
-
-(def (execute-template template metas project)
+(def (execute-template template metas project parent)
   (if (not (table? template))
     (begin
       (displayln "Error: execute-template passed non-table :"  template)
       (exit 2)))
   (let ((converged (converge-template template metas project)))
     (let-hash converged
-      (create-issue .project
-                    .summary
-                    .issuetype
-                    .assignee
-                    .priority
-                    .labels
-                    .originalestimate
-                    .description
-                    .duedate))))
+      (let ((parent (create-issue .project
+                                  .summary
+                                  .issuetype
+                                  .assignee
+                                  .priority
+                                  .labels
+                                  .originalestimate
+                                  .description
+                                  .duedate
+                                  parent))
+            (subtasks (hash-get template "subtasks")))
+        (when subtasks
+          (for (subtask subtasks)
+               (execute-template subtask metas projects parent)))))))
 
 (def (run creation)
   (let-hash (load-config)
@@ -363,7 +365,7 @@ namespace: jira
       (if .?creations
         (let ((creature (hash-get .creations creation)))
           (if creature
-            (execute-template creature metas .project-key)
+            (execute-template creature metas .project-key #f)
             (begin
               (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
               (exit 2))))
@@ -411,7 +413,10 @@ namespace: jira
 (def (parse-metas)
   (let-hash (load-config)
     (let ((metas (createmetas .project-key .basic-auth .url)))
-      (displayln (get-issuetype-id "Epic" metas)))))
+      (let-hash metas
+        (let-hash (car .projects)
+          (for (its .issuetypes)
+               (displayln (hash->list its))))))))
 
 (def (fields)
   (let-hash (load-config)
