@@ -301,8 +301,8 @@ namespace: jira
                  (displayln "Error: Variable " var " is used in the template, but not defined in the environment")
                  (exit 2))
                (set! set-vars (cons val set-vars)))))
-
-      (apply format newstr (reverse set-vars)))))
+      (dp (format "interpol-from-env: string: ~a set-vars: ~a newstr: ~a" str set-vars newstr))
+      (apply format newstr set-vars))))
 
 (def (match-regexp pat str . opt-args)
   "Like pregexp-match but for all matches til end of str"
