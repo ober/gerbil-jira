@@ -1,4 +1,4 @@
-; -*- Gerbil -*-
+;; -*- Gerbil -*-
 package: jira
 namespace: jira
 (export main)
@@ -204,7 +204,6 @@ namespace: jira
       (style-output outs))))
 
 (def (createmetas project basic-auth url)
-  (displayln "createmetas project: " project)
   (let* ((url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a" url project))
          (results (from-json (jira-get url default-headers basic-auth))))
     results))
@@ -250,6 +249,7 @@ namespace: jira
 
 ;;com.atlassian.jira.rest.v2.issue.IssueResource.createIssue_post
 (def (create-issue project summary issuetype assignee priority labels originalestimate description duedate)
+  (displayln "proj: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
 	   (data (hash
@@ -261,16 +261,14 @@ namespace: jira
 		    ("assignee" (hash ("name" assignee)))
 		    ;;	    ("components" [ (hash ("name" component)) ])
 		    ("priority" (hash ("name" priority)))
-		    ("labels" [ labels ])
+		    ("labels" [])
 		    ("timetracking" (hash
 				     ("originalEstimate" originalestimate)))
 		    ("description" description)
 		    ("duedate" duedate)))))
-           ;;	   (results (do-post url (default-headers .basic-auth) (json-object->string data)))
-           ;;	   (myjson (from-json results)))
-           )
-      (displayln "not running query"))))
-;;      (displayln results))))
+           (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+           (myjson (from-json results)))
+      (displayln results))))
 
 (def (remove-bad-matches vars omit)
   (let ((goodies []))
@@ -280,20 +278,22 @@ namespace: jira
     (reverse goodies)))
 
 (def (interpol-from-env str)
-  (let* ((ruby (pregexp "#\\{([a-zA-Z0-9]*)\\}"))
-         (vars (remove-bad-matches (match-regexp ruby str) "#"))
-         (newstr (pregexp-replace* ruby str "~a"))
-         (set-vars []))
+  (if (not (string? str))
+    str
+    (let* ((ruby (pregexp "#\\{([a-zA-Z0-9]*)\\}"))
+           (vars (remove-bad-matches (match-regexp ruby str) "#"))
+           (newstr (pregexp-replace* ruby str "~a"))
+           (set-vars []))
 
-    (for (var vars)
-         (let ((val (getenv var #f)))
-           (if (not val)
-             (begin
-               (displayln "Error: Variable " var " is used in the template, but not defined in the environment")
-               (exit 2))
-             (set! set-vars (cons val set-vars)))))
+      (for (var vars)
+           (let ((val (getenv var #f)))
+             (if (not val)
+               (begin
+                 (displayln "Error: Variable " var " is used in the template, but not defined in the environment")
+                 (exit 2))
+               (set! set-vars (cons val set-vars)))))
 
-    (apply format newstr (reverse set-vars))))
+      (apply format newstr (reverse set-vars)))))
 
 (def (match-regexp pat str . opt-args)
   "Like pregexp-match but for all matches til end of str"
@@ -314,16 +314,19 @@ namespace: jira
   (displayln "Error: " msg)
   (exit code))
 
-(def (converge-template template metas)
+(def (converge-template template metas project)
   (if (not (table? template))
     (error-print "Not a table")
-    (let-hash template
-      (hash
-       (project (get-project-id .project-key metas))
-       (summary (interpol-from-env .summary))
-
-       ))))
-;;       (issuetype
+    (hash
+     (project (get-project-id project metas))
+     (summary (interpol-from-env (hash-get template "summary")))
+     (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
+     (assignee (interpol-from-env (hash-get template "assignee")))
+     (priority (interpol-from-env (hash-get template "priority")))
+     (labels [(interpol-from-env (hash-get template "labels"))])
+     (originalestimate (interpol-from-env (hash-get template "estimate")))
+     (description (interpol-from-env (hash-get template "description")))
+     (duedate (interpol-from-env (hash-get template "duedate"))))))
 
 (def (interpolate-vars template)
   (displayln "template is " (hash->list template))
@@ -337,12 +340,12 @@ namespace: jira
         (description "big description here")
         (duedate "08-21-1971")))
 
-(def (execute-template template metas)
+(def (execute-template template metas project)
   (if (not (table? template))
     (begin
       (displayln "Error: execute-template passed non-table :"  template)
       (exit 2)))
-  (let ((converged (converge-template template metas)))
+  (let ((converged (converge-template template metas project)))
     (let-hash converged
       (create-issue .project
                     .summary
@@ -360,7 +363,7 @@ namespace: jira
       (if .?creations
         (let ((creature (hash-get .creations creation)))
           (if creature
-            (execute-template creature metas)
+            (execute-template creature metas .project-key)
             (begin
               (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
               (exit 2))))
@@ -392,23 +395,23 @@ namespace: jira
 
 (def (get-project-id name metas)
   (let-hash metas
-    .id))
+    (let-hash (car .projects)
+      .?id)))
 
 (def (get-issuetype-id name metas)
   (let-hash metas
-    (let ((id 0))
-      (for (project .projects)
-           (let-hash project
-             (when (string=? .name name)
-               (set! id .id))))
-      id)))
+    (let-hash (car .projects)
+      (let ((id 0))
+        (for (issuetype .issuetypes)
+             (let-hash issuetype
+               (when (string=? .name name)
+                 (set! id .id))))
+        id))))
 
 (def (parse-metas)
   (let-hash (load-config)
     (let ((metas (createmetas .project-key .basic-auth .url)))
-       (let-hash metas
-         (for (project .projects)
-              (displayln (stringify-hash project)))))))
+      (displayln (get-issuetype-id "Epic" metas)))))
 
 (def (fields)
   (let-hash (load-config)
