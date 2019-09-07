@@ -4,7 +4,7 @@ namespace: jira
 (export main)
 
 (declare (not optimize-dead-definitions))
-(def version "0.03")
+(def version "0.04")
 
 (import
   :gerbil/gambit
@@ -67,9 +67,7 @@ namespace: jira
    ("run" (hash (description: "Execute one of your stored creations in your ~/.jira.yaml" ) (usage: "run <creation name>") (count: 1)))
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
-   ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
-   ("interpol" (hash (description: "Test ruby variable expansion for env vars") (usage: "interpol '#{PATH} is path'") (count: 1)))
-   ))
+   ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))))
 
 (def (main . args)
   (if (null? args)
@@ -273,8 +271,8 @@ namespace: jira
         (hash-put! fields "customfield_10496" summary))
 
       (let* ((data (hash (fields fields)))
-            (results (do-post url (default-headers .basic-auth) (json-object->string data)))
-            (myjson (from-json results)))
+             (results (do-post url (default-headers .basic-auth) (json-object->string data)))
+             (myjson (from-json results)))
         (if (table? myjson)
           (let-hash myjson
             .key)
@@ -289,7 +287,6 @@ namespace: jira
 
 (def (interpol str)
   (displayln (interpol-from-env str)))
-
 
 (def (interpol-from-env str)
   (if (not (string? str))
@@ -349,21 +346,22 @@ namespace: jira
       (exit 2)))
   (let ((converged (converge-template template metas project)))
     (let-hash converged
-      (let ((parent (create-issue .project
-                                  .summary
-                                  .issuetype
-                                  .assignee
-                                  .priority
-                                  .labels
-                                  .originalestimate
-                                  .description
-                                  .duedate
-                                  parent))
+      (let ((parent2 (create-issue .project
+                                   .summary
+                                   .issuetype
+                                   .assignee
+                                   .priority
+                                   .labels
+                                   .originalestimate
+                                   .description
+                                   .duedate
+                                   parent))
             (subtasks (hash-get template "subtasks")))
         (when subtasks
           (for (subtask subtasks)
-               (execute-template subtask metas projects parent)))
-      (displayln parent)))))
+               (execute-template subtask metas projects parent2)))
+        (unless parent
+          (displayln "Primary issue: " parent2))))))
 
 (def (run creation)
   (let-hash (load-config)
