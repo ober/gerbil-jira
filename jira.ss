@@ -47,7 +47,7 @@ namespace: jira
    ("comment" (hash (description: "Add comment to Jira issue") (usage: "comment <issue> <comment>") (count: 2)))
    ("config" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
    ("parse-metas" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
-   ("create" (hash (description: "create new jira issue") (usage: "create <summary> <description>") (count: 2)))
+   ("create" (hash (description: "create new jira issue") (usage: "create <project> <summary> <description>") (count: 3)))
    ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
    ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
@@ -68,6 +68,7 @@ namespace: jira
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
    ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
+   ("interpol" (hash (description: "Test ruby variable expansion for env vars") (usage: "interpol '#{PATH} is path'") (count: 1)))
    ))
 
 (def (main . args)
@@ -276,7 +277,7 @@ namespace: jira
             (myjson (from-json results)))
         (if (table? myjson)
           (let-hash myjson
-            .id)
+            .key)
           results)))))
 
 (def (remove-bad-matches vars omit)
@@ -286,10 +287,14 @@ namespace: jira
            (set! goodies (flatten (cons var goodies)))))
     (reverse goodies)))
 
+(def (interpol str)
+  (displayln (interpol-from-env str)))
+
+
 (def (interpol-from-env str)
   (if (not (string? str))
     str
-    (let* ((ruby (pregexp "#\\{([a-zA-Z0-9]*)\\}"))
+    (let* ((ruby (pregexp "#\\{([a-zA-Z0-9_-]*)\\}"))
            (vars (remove-bad-matches (match-regexp ruby str) "#"))
            (newstr (pregexp-replace* ruby str "~a"))
            (set-vars []))
@@ -357,7 +362,8 @@ namespace: jira
             (subtasks (hash-get template "subtasks")))
         (when subtasks
           (for (subtask subtasks)
-               (execute-template subtask metas projects parent)))))))
+               (execute-template subtask metas projects parent)))
+      (displayln parent)))))
 
 (def (run creation)
   (let-hash (load-config)
@@ -371,7 +377,7 @@ namespace: jira
               (exit 2))))
         (displayln "Error: no create templates defined in ~/.jira.yaml under creations")))))
 
-(def (create summary description)
+(def (create project summary description)
   (let-hash (load-config)
     (let* ((metas (createmetas .project .basic-auth .url))
            (url (format "~a/rest/api/2/issue" .url))
@@ -775,9 +781,9 @@ namespace: jira
 (def (read-password prompt)
   (let ((password ""))
     (displayln prompt)
-    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
+    ;;(##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
     (set! password (read-line))
-    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
+    ;;(##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
     password))
 
 (def (test-pass)
