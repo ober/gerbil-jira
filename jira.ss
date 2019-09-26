@@ -56,6 +56,7 @@ namespace: jira
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
    ("index-summary" (hash (description: "Get Index Summary Details") (usage: "index-summary") (count: 0)))
    ("issuetype" (hash (description: "Get information on issuetype") (usage: "issuetype <issuetype id>") (count: 1)))
+   ("watchers" (hash (description: "Get Watchers on issue") (usage: "watchers <issue id>") (count: 1)))
    ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
    ("metadata" (hash (description: "Get definitions of fields available for issue.") (usage: "metadata <issue name>") (count: 1)))
    ("members" (hash (description: "Get list of members of a given project.") (usage: "members <Project Name>") (count: 1)))
@@ -215,6 +216,21 @@ namespace: jira
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (from-json results)))
       (displayln results))))
+
+(def (watchers issue)
+  (let-hash (load-config)
+    (let* ((out [[ "Name" "Full Name" "Email" "Active?" ]])
+           (url (format "~a/rest/api/2/issue/~a/watchers" .url issue))
+	   (results (do-get-generic url (default-headers .basic-auth)))
+	   (data (from-json results)))
+      (displayln (hash->list data))
+      (when (table? data)
+        (let-hash data
+          (for (watcher .watchers)
+               (let-hash watcher
+                 (set! out (cons [ .?name .?displayName .?emailAddress .?active ] out))))))
+      (style-output out))))
+
 
 (def (get-issue issue)
   (let-hash (load-config)
