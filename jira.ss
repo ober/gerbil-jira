@@ -57,6 +57,8 @@ namespace: jira
    ("index-summary" (hash (description: "Get Index Summary Details") (usage: "index-summary") (count: 0)))
    ("issuetype" (hash (description: "Get information on issuetype") (usage: "issuetype <issuetype id>") (count: 1)))
    ("watchers" (hash (description: "Get Watchers on issue") (usage: "watchers <issue id>") (count: 1)))
+   ("watcher-delete" (hash (description: "Get Watchers on issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
+   ("watcher-add" (hash (description: "Get Watchers on issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
    ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
    ("metadata" (hash (description: "Get definitions of fields available for issue.") (usage: "metadata <issue name>") (count: 1)))
    ("members" (hash (description: "Get list of members of a given project.") (usage: "members <Project Name>") (count: 1)))
@@ -117,6 +119,16 @@ namespace: jira
 	 (status (request-status reply))
 	 (text (request-text reply)))
     (print-curl "get" uri "" "")
+    (if (success? status)
+      text
+      (displayln (format "Error: got ~a on request. text: ~a~%" status text)))))
+
+(def (do-delete uri headers)
+  (let* ((reply (http-delete uri
+			  headers: headers))
+	 (status (request-status reply))
+	 (text (request-text reply)))
+    (print-curl "delete" uri "" "")
     (if (success? status)
       text
       (displayln (format "Error: got ~a on request. text: ~a~%" status text)))))
@@ -217,20 +229,30 @@ namespace: jira
 	   (myjson (from-json results)))
       (displayln results))))
 
+(def (watcher-delete issue name)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/watchers?username=~a" .url issue name))
+           (results (do-delete url (default-headers .basic-auth))))
+      (displayln results))))
+
+(def (watcher-add issue name)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue))
+           (results (do-post url (default-headers .basic-auth) (json-object->string name))))
+      (displayln results))))
+
 (def (watchers issue)
   (let-hash (load-config)
     (let* ((out [[ "Name" "Full Name" "Email" "Active?" ]])
            (url (format "~a/rest/api/2/issue/~a/watchers" .url issue))
 	   (results (do-get-generic url (default-headers .basic-auth)))
 	   (data (from-json results)))
-      (displayln (hash->list data))
       (when (table? data)
         (let-hash data
           (for (watcher .watchers)
                (let-hash watcher
-                 (set! out (cons [ .?name .?displayName .?emailAddress .?active ] out))))))
+                 (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
       (style-output out))))
-
 
 (def (get-issue issue)
   (let-hash (load-config)
