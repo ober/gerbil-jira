@@ -50,7 +50,6 @@ namespace: jira
    ("create" (hash (description: "create new jira issue") (usage: "create <project> <summary> <description>") (count: 3)))
    ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
-   ("get-issue" (hash (description: "Get Jira Issue") (usage: "jira-get-issue") (count: 1)))
    ("get-issuetype-id" (hash (description: "Get Jira issuetype id from name") (usage: "get-issuetype-id <issuetype name>") (count: 1)))
    ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
@@ -253,19 +252,6 @@ namespace: jira
                (let-hash watcher
                  (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
       (style-output out))))
-
-(def (get-issue issue)
-  (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-	   (results (do-get-generic url (default-headers .basic-auth)))
-	   (myjson (from-json results)))
-      (displayln "|id|assignee email|assignee name|reporter|watchers|description|summary|priority|status|")
-      (displayln "|--|--|")
-
-      (let-hash myjson
-	(let-hash .fields
-	  (for (component .components)
-	       (displayln (stringify-hash component))))))))
 
 (def (stringify-hash h)
   (let ((results []))
@@ -645,17 +631,11 @@ namespace: jira
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
            (results (do-get-generic url (default-headers .basic-auth)))
-           (users (from-json results)))
-      (displayln "|User | Email| Full Name | Active | Timezone| Profile |")
-      (displayln "|-|")
+           (users (from-json results))
+           (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
       (for (user users)
            (let-hash user
-             (displayln "|" .name
-                        "|" .emailAddress
-                        "|" .displayName
-                        "|" .active
-                        "|" .timeZone
-                        "|" .self "|"))))))
+             (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self]] outs))))))
 
 (def (issue id)
   (let-hash (load-config)
@@ -685,17 +665,12 @@ namespace: jira
           (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
           (displayln "** Subtasks: ")
           (when .?subtasks
-            (displayln "|ID|Summary | Status | Priority|")
-            (displayln "|-|")
+            (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
             (for (subtask .subtasks)
                  (let-hash subtask
                    (let-hash .fields
-                     (displayln "|" ..?key
-                                "|" .?summary
-                                "|" (hash-ref .status 'name)
-                                "|" (hash-ref .priority 'name)
-                                "|")))))
-
+                     (set! outs (cons [ ..?key .?summary (hash-ref .status 'name)  (hash-ref .priority 'name) ] outs)))))
+            (style-output outs)))
           (displayln "** Comments: ")
           (let-hash .comment
             (for (comment .comments)
@@ -710,22 +685,15 @@ namespace: jira
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/priority" .url))
            (results (do-get-generic url (default-headers .basic-auth)))
-           (priorities (from-json results)))
-      (displayln "|Name|Id|Description|Status Color| Url|Icon Url|")
-      (displayln "|-|")
+           (priorities (from-json results))
+           (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
       (for (priority priorities)
            (let-hash priority
-             (displayln "|" .?name
-                        "|" .?id
-                        "|" .?description
-                        "|" .?statusColor
-                        "|" .?self
-                        "|" .?iconUrl))))))
-
+             (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
+      (style-output outs))))
 
 (def (jira-get url headers basic)
   (do-get-generic url (default-headers basic)))
-
 
 (def (index-summary)
   (let-hash (load-config)
@@ -742,16 +710,12 @@ namespace: jira
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/project" .url))
            (results (do-get-generic url (default-headers .basic-auth)))
-           (projects (from-json results)))
-      (displayln "|id|key|name|")
-      (displayln "|-|")
+           (projects (from-json results))
+           (outs [[ "Id" "Key" "Name" ]]))
       (for (project projects)
            (let-hash project
-             (displayln "|" .id
-                        "|" .key
-                        "|" .name
-                        "|" .projectTypeKey
-                        "|"))))))
+             (set! outs (cons [ .?id .?key .?name .?projectTypeKey ] outs))))
+      (style-output outs))))
 
 (def (properties issue)
   (let-hash (load-config)
