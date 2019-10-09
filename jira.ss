@@ -473,22 +473,6 @@ namespace: jira
   (let* ((output (pregexp-replace* " " string "%20")))
     output))
 
-(def (cf key val search-fields)
-  "Return element if it is member of search-fields"
-  (if search-fields
-    (when (list? search-fields)
-      (when (member key search-fields)
-        val))
-    val))
-
-(def (cf key val search-fields)
-  "Return element if it is member of search-fields"
-  (if search-fields
-    (when (list? search-fields)
-      (when (member key search-fields)
-        val))
-    val))
-
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
@@ -538,7 +522,7 @@ namespace: jira
                             (when (member "issuetype" .?search-fields) (when (table? .?issuetype) (hash-ref .issuetype 'name)))
                             (when (member "project" .?search-fields) (when (table? .?project) (hash-ref .project 'name)))
                             (when (member "watchers" .?search-fields) (hash-ref .watches 'watchCount))
-                            (when (memeber "url" .?search-fields) (format "~a/browse/~a" ...url ..key))
+                            (when (member "url" .?search-fields) (format "~a/browse/~a" ...url ..key))
                              ] outs)))))
       (style-output outs))))
 
