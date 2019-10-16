@@ -1,6 +1,4 @@
 ;; -*- Gerbil -*-
-package: jira
-namespace: jira
 
 (import
   :gerbil/gambit
