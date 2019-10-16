@@ -4,19 +4,26 @@
 
 (import
   :gerbil/gambit
+  :gerbil/gambit/ports
   :scheme/base
   :std/crypto/cipher
   :std/crypto/etc
   :std/crypto/libcrypto
+  :std/db/dbi
+  :std/debug/heap
+  :std/iter
+  :std/error
   :std/format
   :std/generic
   :std/generic/dispatch
-  :std/iter
   :std/misc/channel
+  :std/misc/list
   :std/misc/ports
   :std/net/address
   :std/net/request
+  :std/net/uri
   :std/pregexp
+  :std/srfi/1
   :std/srfi/13
   :std/srfi/19
   :std/srfi/95
@@ -25,6 +32,9 @@
   :std/text/json
   :std/text/utf8
   :std/text/yaml
+  :std/text/zlib
+  :std/xml/ssax
+  :ober/oberlib
   :ober/jira/client)
 
 (export main)
@@ -32,7 +42,6 @@
 (declare (not optimize-dead-definitions))
 
 (def program-name "jira")
-
 
 (def interactives
   (hash
