@@ -324,45 +324,30 @@
            (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
            (myjson (from-json results))
            (issues (let-hash myjson .issues))
-           (firms [
-                   (when (member "key" .?search-fields) "Key")
-                   (when (member "summary" .?search-fields) "Summary")
-                   (when (member "priority" .?search-fields) "Priority")
-                   (when (member "updated" .?search-fields) "Updated")
-                   (when (member "labels" .?search-fields) "Labels")
-                   (when (member "status" .?search-fields) "Status")
-                   (when (member "assignee" .?search-fields) "Assignee")
-                   (when (member "creator" .?search-fields) "Creator")
-                   (when (member "reporter" .?search-fields) "Reporter")
-                   (when (member "issuetype" .?search-fields) "Issuetype")
-                   (when (member "project" .?search-fields) "Project")
-                   (when (member "watchers" .?search-fields) "Watchers")
-                   (when (member "url" .?search-fields) "Url")
-                   ]))
+           (headers [ "Key" "Summary" "Priority" "Updated" "Labels" "Status" "Assignee" "Creator" "Reporter" "Issuetype" "Project" "Watchers" "Url" ]))
 
-      (set! outs (cons firms outs))
+      (set! outs (cons headers outs))
       (for (p issues)
            (let-hash p
              (dp (hash->list .fields))
              (let-hash .fields
                (set! outs (cons
                            [
-                            (when (member "key" .?search-fields) ..key)
-                            (when (member "summary" .?search-fields) .?summary)
-                            (when (member "priority" .?search-fields) (when (table? .?priority) (hash-ref .priority 'name)))
-                            (when (member "updated" .?search-fields) (when .?updated (date->custom .updated)))
-                            (when (member "labels" .?search-fields) .?labels .?search-fields)
-                            (when (member "status" .?search-fields) (when (table? .?status) (red (hash-ref .status 'name))))
-                            (when (member "assignee" .?search-fields) (when (table? .?assignee) (hash-ref .assignee 'name)))
-                            (when (member "creator" .?search-fields) (when (table? .?creator) (hash-ref .creator 'name)))
-                            (when (member "reporter" .?search-fields) (when (table? .?reporter) (hash-ref .reporter 'name)))
-                            (when (member "issuetype" .?search-fields) (when (table? .?issuetype) (hash-ref .issuetype 'name)))
-                            (when (member "project" .?search-fields) (when (table? .?project) (hash-ref .project 'name)))
-                            (when (member "watchers" .?search-fields) (hash-ref .watches 'watchCount))
-                            (when (member "url" .?search-fields) (format "~a/browse/~a" ...url ..key))
-                             ] outs)))))
+                            ..key
+                            .?summary
+                            (when (table? .?priority) (hash-ref .priority 'name))
+                            (when .?updated (date->custom .updated))
+                            .?labels
+                            (when (table? .?status) (red (hash-ref .status 'name)))
+                            (when (table? .?assignee) (hash-ref .assignee 'name))
+                            (when (table? .?creator) (hash-ref .creator 'name))
+                            (when (table? .?reporter) (hash-ref .reporter 'name))
+                            (when (table? .?issuetype) (hash-ref .issuetype 'name))
+                            (when (table? .?project) (hash-ref .project 'name))
+                            (hash-ref .watches 'watchCount)
+                            (format "~a/browse/~a" ...url ..key)
+                            ] outs)))))
       (style-output outs))))
-
 
 (def (comment issue comment)
   (let-hash (load-config)
