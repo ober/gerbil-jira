@@ -1,2 +1,2 @@
 (package: ober)
-(depend: github.com/ober/oberlib)
+(depend: [ github.com/ober/oberlib ])
