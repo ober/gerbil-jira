@@ -1,4 +1,6 @@
 ;; -*- Gerbil -*-
+;;; © ober
+;;; Jira client binary
 
 (import
   :gerbil/gambit
