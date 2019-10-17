@@ -338,7 +338,7 @@
                             (when (table? .?priority) (hash-ref .priority 'name))
                             (when .?updated (date->custom .updated))
                             .?labels
-                            (when (table? .?status) (red (hash-ref .status 'name)))
+                            (when (table? .?status) (hash-ref .status 'name))
                             (when (table? .?assignee) (hash-ref .assignee 'name))
                             (when (table? .?creator) (hash-ref .creator 'name))
                             (when (table? .?reporter) (hash-ref .reporter 'name))
