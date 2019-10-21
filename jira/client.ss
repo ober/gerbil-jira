@@ -475,13 +475,6 @@
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
 
 
-(def (read-password prompt)
-  (let ((password ""))
-    (displayln prompt)
-    ;;(##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
-    (set! password (read-line))
-    ;;(##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
-    password))
 
 (def (test-pass)
   (let ((pass (read-password "this is a test:")))
@@ -519,3 +512,12 @@
 (def (red txt)
   "Return a red version of txt"
   (format "\\e[7;37;41m~a\\e[o;37;40m" txt))
+
+(def (read-password prompt)
+  (let ((password ""))
+    (displayln prompt)
+    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
+    (set! password (read-line))
+    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
+    (##tty-mode-reset)
+    password))
