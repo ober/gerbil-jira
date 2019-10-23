@@ -93,7 +93,7 @@
       (displayln results))))
 
 (def (transitions issue)
-  (let-hash (load-config)
+  (let-hash (looad-config)
     (let* ((outs [["id" "name" "toname" "tostate"]])
 	   (url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (results (do-get-generic url (default-headers .basic-auth)))
@@ -123,7 +123,7 @@
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (data (hash
-                  ("body" comment)
+                  ("comment" comment)
 		  ("transition" (hash ("id" trans)))))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (from-json results)))
