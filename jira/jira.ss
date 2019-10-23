@@ -71,6 +71,7 @@
    ("run" (hash (description: "Execute one of your stored creations in your ~/.jira.yaml" ) (usage: "run <creation name>") (count: 1)))
    ("search" (hash (description: "Search for issues matching string") (usage: "search <query string>") (count: 1)))
    ("transition" (hash (description: "Transition issue to new state.") (usage: "transition <issue name> <transition id>") (count: 2)))
+   ("transition-comment" (hash (description: "Transition issue to new state while commenting.") (usage: "transition-comment <issue name> <transition id> <comment>") (count: 3)))
    ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))))
 
 (def (main . args)
