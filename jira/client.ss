@@ -119,6 +119,16 @@
 	   (myjson (from-json results)))
       (displayln results))))
 
+(def (transition-comment issue trans comment)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+	   (data (hash
+                  ("body" comment)
+		  ("transition" (hash ("id" trans)))))
+	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
+	   (myjson (from-json results)))
+      (displayln results))))
+
 (def (watcher-delete issue name)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/watchers?username=~a" .url issue name))
