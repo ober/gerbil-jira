@@ -483,8 +483,6 @@
 (def (get-new-ip uri host)
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
 
-
-
 (def (test-pass)
   (let ((pass (read-password "this is a test:")))
     (displayln "done, and pass is " pass)))
@@ -530,3 +528,12 @@
     (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
     (##tty-mode-reset)
     password))
+
+(def (open issue)
+  (let-hash (load-config)
+    (let* ((command (cond-expand
+                      (darwin "open")
+                      (linux "xdg-open")
+                      (bsd "xdg-open")))
+           (job (format "~a ~a/browse/~a" command .url issue)))
+      (displayln (shell-command job)))))
