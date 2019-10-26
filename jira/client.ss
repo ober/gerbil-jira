@@ -38,7 +38,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.05")
+(def version "0.06")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
