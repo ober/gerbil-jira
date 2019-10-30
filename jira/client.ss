@@ -122,7 +122,7 @@
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (data (hash
-                  ("comment" comment)
+                  ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
 		  ("transition" (hash ("id" trans)))))
 	   (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
 	   (myjson (from-json results)))
