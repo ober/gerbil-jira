@@ -33,7 +33,7 @@
   :std/text/yaml
   :std/text/zlib
   :std/xml/ssax
-;;  :ober/oberlib
+  :ober/oberlib
   :ober/jira/client)
 
 (export main)
