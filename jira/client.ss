@@ -319,9 +319,23 @@
   (let* ((output (pregexp-replace* " " string "%20")))
     output))
 
+(def (filter-headers headers fields)
+  (let ((ours headers))
+    (for (header headers)
+         (unless (member header fields)
+           (displayln "removing " header)
+           (delete! header ours)))
+    ours))
+
+(def (filter-row name value headers)
+  (when (member name headers)
+    value))
+
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
+           (sf .?search-fields)
+           (df [ "key" "summary" "priority" "updated" "labels" "status" "assignee" "creator" "reporter" "issuetype" "project" "watchers" "url" ])
            (query
             (if (or (string-contains query "=")
                     (string-contains query "("))
@@ -333,30 +347,45 @@
            (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
            (myjson (from-json results))
            (issues (let-hash myjson .issues))
-           (headers [ "Key" "Summary" "Priority" "Updated" "Labels" "Status" "Assignee" "Creator" "Reporter" "Issuetype" "Project" "Watchers" "Url" ]))
+           (headers (if (and sf
+                             (list? sf)
+                             (length>n? sf 1))
+                      sf
+                      df)))
 
       (set! outs (cons headers outs))
-      (for (p issues)
-           (let-hash p
-             (dp (hash->list .fields))
+      (for (issue issues)
+           (let-hash issue
+           (dp (hash->list .fields))
              (let-hash .fields
-               (set! outs (cons
-                           [
-                            ..key
-                            .?summary
-                            (when (table? .?priority) (hash-ref .priority 'name))
-                            (when .?updated (date->custom .updated))
-                            .?labels
-                            (when (table? .?status) (hash-ref .status 'name))
-                            (when (table? .?assignee) (hash-ref .assignee 'name))
-                            (when (table? .?creator) (hash-ref .creator 'name))
-                            (when (table? .?reporter) (hash-ref .reporter 'name))
-                            (when (table? .?issuetype) (hash-ref .issuetype 'name))
-                            (when (table? .?project) (hash-ref .project 'name))
-                            (hash-ref .watches 'watchCount)
-                            (format "~a/browse/~a" ...url ..key)
-                            ] outs)))))
+               (set! outs
+                 (cons
+                  (filter-row-hash
+                   (hash
+                    ("key" ..key)
+                    ("description" .?description)
+                    ("summary" .?summary)
+                    ("priority" (when (table? .?priority) (hash-ref .priority 'name)))
+                    ("updated" (when .?updated (date->custom .updated)))
+                    ("labels" .?labels)
+                    ("status" (when (table? .?status) (hash-ref .status 'name)))
+                    ("assignee" (when (table? .?assignee) (hash-ref .assignee 'name)))
+                    ("creator" (when (table? .?creator) (hash-ref .creator 'name)))
+                    ("reporter" (when (table? .?reporter) (hash-ref .reporter 'name)))
+                    ("issuetype" (when (table? .?issuetype) (hash-ref .issuetype 'name)))
+                    ("project" (when (table? .?project) (hash-ref .project 'name)))
+                    ("watchers" (hash-ref .watches 'watchCount))
+                    ("url" (format "~a/browse/~a" ...url ..key))) headers) outs)))))
       (style-output outs))))
+
+(def (filter-row-hash row fields)
+  (let ((final []))
+    (for (field fields)
+         (let ((value (hash-get row field)))
+           (if value
+             (set! final (cons value final))
+             (displayln "Field " field " was requested but not found in fields hash "))))
+    (reverse final)))
 
 (def (comment issue comment)
   (let-hash (load-config)
@@ -526,7 +555,6 @@
     (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
     (set! password (read-line))
     (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
-    (##tty-mode-reset)
     password))
 
 (def (open issue)
