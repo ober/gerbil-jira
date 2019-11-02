@@ -365,7 +365,7 @@
                     ("key" ..key)
                     ("description" .?description)
                     ("summary" .?summary)
-                    ("priority" (when (table? .?priority) (hash-ref .priority 'name)))
+                    ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
                     ("updated" (when .?updated (date->custom .updated)))
                     ("labels" .?labels)
                     ("status" (when (table? .?status) (hash-ref .status 'name)))
@@ -426,13 +426,9 @@
       (let-hash issue
         (let-hash .fields
           (displayln "** Summary: " .summary)
-          (let-hash .status
-            (displayln "** Description: " .description)
-            (displayln "** State: " .name))
-          (let-hash .priority
-            (displayln "** Priority: " .name))
-          (let-hash .issuetype
-            (displayln "** Issue Type: " .name))
+          (when .?status (let-hash .status (displayln "** Description: " .description) (displayln "** State: " .name)))
+          (when .?priority (let-hash .priority (displayln "** Priority: " .name)))
+          (when .?issuetype (let-hash .issuetype   (displayln "** Issue Type: " .name)))
           (displayln "** Description: " .description)
           (displayln "** Summary: " .summary)
           (displayln "** Last Viewed: " .lastViewed)
