@@ -548,9 +548,9 @@
 (def (read-password prompt)
   (let ((password ""))
     (displayln prompt)
-    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
+;;    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
     (set! password (read-line))
-    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
+;;    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
     password))
 
 (def (open issue)
