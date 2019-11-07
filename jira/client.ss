@@ -526,9 +526,7 @@
                                      (key key-store))))))
 
       (displayln "Add the following lines to your " config-file)
-      (displayln "-----------------------------------------")
-      (displayln "secrets: " secrets)
-      (displayln "-----------------------------------------"))))
+      (displayln "secrets: " secrets))))
 
 (def (get-password-from-config key iv password)
   (bytes->string
