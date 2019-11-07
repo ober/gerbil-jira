@@ -508,13 +508,10 @@
 (def (get-new-ip uri host)
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
 
-(def (test-pass)
-  (let ((pass (read-password "this is a test:")))
-    (displayln "done, and pass is " pass)))
-
 (def (config)
   (let-hash (load-config)
-    (let* ((password (read-password "What is your password?: "))
+    (display "What is your Jira password? (will not echo) :")
+    (let* ((password (read-password ##console-port))
            (cipher (make-aes-256-ctr-cipher))
            (iv (random-bytes (cipher-iv-length cipher)))
            (key (random-bytes (cipher-key-length cipher)))
@@ -544,14 +541,6 @@
 (def (red txt)
   "Return a red version of txt"
   (format "\\e[7;37;41m~a\\e[o;37;40m" txt))
-
-(def (read-password prompt)
-  (let ((password ""))
-    (displayln prompt)
-;;    (##tty-mode-set! (current-input-port) #!void #f #!void #!void #!void)
-    (set! password (read-line))
-;;    (##tty-mode-set! (current-input-port) #!void #t #!void #!void #!void)
-    password))
 
 (def (open issue)
   (let-hash (load-config)
