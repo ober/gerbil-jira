@@ -319,18 +319,6 @@
   (let* ((output (pregexp-replace* " " string "%20")))
     output))
 
-(def (filter-headers headers fields)
-  (let ((ours headers))
-    (for (header headers)
-         (unless (member header fields)
-           (displayln "removing " header)
-           (delete! header ours)))
-    ours))
-
-(def (filter-row name value headers)
-  (when (member name headers)
-    value))
-
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
@@ -377,15 +365,6 @@
                     ("watchers" (hash-ref .watches 'watchCount))
                     ("url" (format "~a/browse/~a" ...url ..key))) headers) outs)))))
       (style-output outs))))
-
-(def (filter-row-hash row fields)
-  (let ((final []))
-    (for (field fields)
-         (let ((value (hash-get row field)))
-           (if value
-             (set! final (cons value final))
-             (displayln "Field " field " was requested but not found in fields hash "))))
-    (reverse final)))
 
 (def (comment issue comment)
   (let-hash (load-config)
