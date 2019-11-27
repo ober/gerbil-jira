@@ -315,10 +315,6 @@
            (myjson (from-json results)))
       (displayln results))))
 
-(def (make-web-safe string)
-  (let* ((output (pregexp-replace* " " string "%20")))
-    output))
-
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
