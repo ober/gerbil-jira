@@ -199,7 +199,8 @@
   (if (not (table? template))
     (error-print "Not a table")
     (hash
-     (project (get-project-id project metas))
+     ;;(project (get-project-id project metas))
+     (project (interpol-from-env (hash-get template "project")))
      (summary (interpol-from-env (hash-get template "summary")))
      (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
      (assignee (interpol-from-env (hash-get template "assignee")))
@@ -524,3 +525,8 @@
                       (bsd "xdg-open")))
            (job (format "~a ~a/browse/~a" command .url issue)))
       (displayln (shell-command job)))))
+
+
+(def (convert-names str)
+  (let ((results ""))
+    (pregexp-replace* "(\\s)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]")))
