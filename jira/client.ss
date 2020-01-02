@@ -366,8 +366,9 @@
 (def (comment issue comment)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/comment" .url issue))
+           (fixed-comment (convert-names comment))
            (data (hash
-                  ("body" comment)))
+                  ("body" fixed-comment)))
            (out-js (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
            (results (with-input-from-string out-js read-json)))
       (process-results results))))
