@@ -373,10 +373,11 @@
           (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
       (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
         (when (list? body)
-          (for (user body)
-            (let-hash user
-              (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
-          (style-output outs .style))))))
+          (let ((users (nth 0 body)))
+            (for (user users)
+              (let-hash user
+                (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
+            (style-output outs .style)))))))
 
 (def (issue id)
   (let-hash (load-config)
