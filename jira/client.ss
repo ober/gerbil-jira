@@ -77,7 +77,7 @@
     (let* ((url (format "~a/rest/api/2/serverinfo" .url))
 	   (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status . body] results)
-        (displayln body)))))
+        (present-item body)))))
 
 (def (filters)
   (let-hash (load-config)
@@ -110,7 +110,7 @@
     (let ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
           (data (hash ("transition" (hash ("id" trans))))))
       (with ([ status . body ] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (transition-comment issue trans comment)
   (let-hash (load-config)
@@ -119,19 +119,19 @@
                   ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
 		  ("transition" (hash ("id" trans))))))
       (with ([status . body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (watcher-delete issue name)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a/watchers?username=~a" .url issue name)))
       (with ([status . body] (rest-call 'delete url (default-headers .basic-auth)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (watcher-add issue name)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue)))
       (with ([status . body] (rest-call 'post url (default-headers .basic-auth) (json-object->string name)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (watchers issue)
   (let-hash (load-config)
@@ -149,7 +149,7 @@
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issuetype/~a" .url type)))
       (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (create-issue project summary issuetype assignee priority labels originalestimate description duedate parent)
   (displayln "proj: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate " parent: " parent)
@@ -256,7 +256,7 @@
                     ("description" description)
                     ("duedate" "2018-05-15"))))))
       (with ([status . body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (get-project-id name metas)
   (let-hash metas
@@ -283,26 +283,25 @@
 
 (def (fields)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/field" .url))
-           (results (do-get-generic url (default-headers .basic-auth))))
-      (displayln results))))
+    (let ((url (format "~a/rest/api/2/field" .url)))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (present-item body)))))
 
 (def (editmeta issue)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-           (results (do-get-generic url (default-headers .basic-auth))))
-      (display results))))
+    (let ((url (format "~a/rest/api/2/issue/~a" .url issue)))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (present-item body)))))
 
 (def (label issue label)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a" .url issue))
-           (data (hash
-                  ("fields"
-                   (hash
-                    ("labels" [ label ])))))
-           (results (do-put url (default-headers .basic-auth) (json-object->string data)))
-           (body (from-json results)))
-      (displayln results))))
+    (let ((url (format "~a/rest/api/2/issue/~a" .url issue))
+          (data (hash
+                 ("fields"
+                  (hash
+                   ("labels" [ label ]))))))
+      (with ([status . body] (rest-call 'pput url (default-headers .basic-auth) (json-object->string data)))
+        (present-item body)))))
 
 (def (search query)
   (let-hash (load-config)
@@ -357,32 +356,27 @@
     (let* ((url (format "~a/rest/api/2/issue/~a/comment" .url issue))
            (fixed-comment (convert-names comment))
            (data (hash
-                  ("body" fixed-comment)))
-           (out-js (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-           (results (with-input-from-string out-js read-json)))
-      (process-results results))))
-
-(def (process-results results)
-  (displayln (hash->list results)))
+                  ("body" fixed-comment))))
+      (with ([status . body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
+        (present-item body)))))
 
 (def (assign issue user)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
-           (data (hash
-                  ("name" user)))
-           (results (do-put url (default-headers .basic-auth) (json-object->string data))))
-      (displayln results))))
+    (let ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
+          (data (hash ("name" user))))
+      (with ([status . body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
+        (present-item body)))))
 
 (def (user pattern)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
-           (results (do-get-generic url (default-headers .basic-auth)))
-           (users (from-json results))
-           (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
-      (for (user users)
-        (let-hash user
-          (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
-      (style-output outs .style))))
+    (let ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
+          (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (when (list? body)
+          (for (user body)
+            (let-hash user
+              (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
+          (style-output outs .style))))))
 
 (def (issue id)
   (let-hash (load-config)
@@ -438,13 +432,13 @@
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/index/summary" .url)))
       (with ([status . body] (rest-call 'get url default-headers .basic-auth))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (members project)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/group/member?groupname=~a&includeInactiveUsers=false" .url project)))
       (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
-        (displayln body)))))
+        (present-item body)))))
 
 (def (projects)
   (let-hash (load-config)
@@ -460,15 +454,15 @@
 
 (def (properties issue)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/properties" .url issue))
-           (results (do-get-generic url (default-headers .basic-auth))))
-      (displayln results))))
+    (let ((url (format "~a/rest/api/2/issue/~a/properties" .url issue)))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (present-item body)))))
 
 (def (property issue)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/properties/sd.initial.field.set" .url issue))
-           (results (do-get-generic url (default-headers .basic-auth))))
-      (displayln results))))
+    (let ((url (format "~a/rest/api/2/issue/~a/properties/sd.initial.field.set" .url issue)))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (present-item body)))))
 
 (def (get-new-ip uri host)
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
