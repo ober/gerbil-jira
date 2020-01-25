@@ -38,7 +38,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.08")
+(def version "0.09")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -316,7 +316,6 @@
            (url (format "~a/rest/api/2/search" .url))
            (data (hash
                   ("jql" query)))
-           ;;(results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
            (results (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
            (body (nth 1 results))
            (issues (let-hash body .issues))
@@ -381,53 +380,54 @@
 
 (def (issue id)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a" .url id))
-           (results (do-get-generic url (default-headers .basic-auth)))
-           (issue (from-json results)))
-      (let-hash issue
-        (let-hash .fields
-          (displayln "** Summary: " .summary)
-          (when .?status (let-hash .status (displayln "** Description: " .description) (displayln "** State: " .name)))
-          (when .?priority (let-hash .priority (displayln "** Priority: " .name)))
-          (when .?issuetype (let-hash .issuetype   (displayln "** Issue Type: " .name)))
-          (displayln "** Description: " .description)
-          (displayln "** Summary: " .summary)
-          (displayln "** Last Viewed: " .lastViewed)
-          (displayln "** Created: " .created)
+    (let ((url (format "~a/rest/api/2/issue/~a" .url id)))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (let ((issue (nth 0 body)))
+          (when (table? issue)
+            (let-hash issue
+              (let-hash .fields
+                (displayln "** Summary: " .summary)
+                (when .?status (let-hash .status (displayln "** Description: " .description) (displayln "** State: " .name)))
+                (when .?priority (let-hash .priority (displayln "** Priority: " .name)))
+                (when .?issuetype (let-hash .issuetype   (displayln "** Issue Type: " .name)))
+                (displayln "** Description: " .description)
+                (displayln "** Summary: " .summary)
+                (displayln "** Last Viewed: " .lastViewed)
+                (displayln "** Created: " .created)
 
-          (let-hash .status (displayln "** Status: " .name))
-          (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
-          (let-hash .project (displayln "** Project: " .name))
-          (let-hash .watches (displayln "** Watch Count: " .watchCount))
-          (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
-          (displayln "** Subtasks: ")
-          (when .?subtasks
-            (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
-              (for (subtask .subtasks)
-                (let-hash subtask
-                  (let-hash .fields
-                    (set! outs (cons [ ..?key .?summary (hash-ref .status 'name)  (hash-ref .priority 'name) ] outs)))))
-              (style-output outs .style)))
-          (displayln "** Comments: ")
-          (let-hash .comment
-            (for (comment .comments)
-              (let-hash comment
-                (let-hash .author
-                  (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
-                (displayln (pregexp-replace* "*" .body "@")))))
-          (let-hash .assignee
-            (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))
+                (let-hash .status (displayln "** Status: " .name))
+                (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
+                (let-hash .project (displayln "** Project: " .name))
+                (let-hash .watches (displayln "** Watch Count: " .watchCount))
+                (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
+                (displayln "** Subtasks: ")
+                (when .?subtasks
+                  (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
+                    (for (subtask .subtasks)
+                      (let-hash subtask
+                        (let-hash .fields
+                          (set! outs (cons [ ..?key .?summary (hash-ref .status 'name)  (hash-ref .priority 'name) ] outs)))))
+                    (style-output outs (or .?style "org-mode"))))
+                (displayln "** Comments: ")
+                (let-hash .comment
+                  (for (comment .comments)
+                    (let-hash comment
+                      (let-hash .author
+                        (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
+                      (displayln (pregexp-replace* "*" .body "@")))))
+                (let-hash .assignee
+                  (displayln "** Assignee: " .displayName " " .name " " .emailAddress))))))))))
 
 (def (priorities)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/priority" .url))
-           (results (do-get-generic url (default-headers .basic-auth)))
-           (priorities (from-json results))
-           (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
-      (for (priority priorities)
-        (let-hash priority
-          (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
-      (style-output outs))))
+    (let ((url (format "~a/rest/api/2/priority" .url))
+          (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
+      (with ([status . body] (rest-call 'get url (default-headers .basic-auth)))
+        (let (priorities (nth 0 body))
+          (for (priority priorities)
+            (let-hash priority
+              (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
+          (style-output outs))))))
 
 (def (index-summary)
   (let-hash (load-config)
