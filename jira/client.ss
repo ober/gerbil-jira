@@ -82,8 +82,9 @@
 (def (gettoken)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/serverinfo" .url))
-	   (results (do-get-generic url (default-headers .basic-auth))))
-      (displayln results))))
+	   (results (rest-call "get" url (default-headers .basic-auth))))
+      (with ([status . body] results)
+        (displayln body)))))
 
 (def (filters)
   (let-hash (load-config)
@@ -102,7 +103,7 @@
 	     (let-hash transition
 	       (let-hash .to
 		 (set! outs (cons [ ..id ..name .name .description ] outs))))))
-      (style-output outs))))
+      (style-output outs .style))))
 
 (def (createmetas project basic-auth url)
   (let* ((url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a" url project))
@@ -151,7 +152,7 @@
           (for (watcher .watchers)
                (let-hash watcher
                  (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
-      (style-output out))))
+      (style-output out .style))))
 
 (def (issuetype type)
   (let-hash (load-config)
@@ -329,8 +330,10 @@
            (url (format "~a/rest/api/2/search" .url))
            (data (hash
                   ("jql" query)))
-           (results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
-           (myjson (from-json results))
+           ;;(results (do-post-generic url (default-headers .basic-auth) (json-object->string data)))
+           (results (rest-call "post" url (default-headers .basic-auth) (json-object->string data)))
+           ;; (myjson (from-json results))
+           (myjson (nth 1 results))
            (issues (let-hash myjson .issues))
            (headers (if (and sf
                              (list? sf)
@@ -361,7 +364,7 @@
                     ("project" (when (table? .?project) (hash-ref .project 'name)))
                     ("watchers" (hash-ref .watches 'watchCount))
                     ("url" (format "~a/browse/~a" ...url ..key))) headers) outs)))))
-      (style-output outs))))
+      (style-output outs .style))))
 
 (def (comment issue comment)
   (let-hash (load-config)
@@ -393,7 +396,7 @@
       (for (user users)
            (let-hash user
              (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
-      (style-output outs))))
+      (style-output outs .style))))
 
 (def (issue id)
   (let-hash (load-config)
@@ -423,7 +426,7 @@
                    (let-hash subtask
                      (let-hash .fields
                        (set! outs (cons [ ..?key .?summary (hash-ref .status 'name)  (hash-ref .priority 'name) ] outs)))))
-              (style-output outs)))
+              (style-output outs .style)))
           (displayln "** Comments: ")
           (let-hash .comment
             (for (comment .comments)
