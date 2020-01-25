@@ -415,20 +415,20 @@
                 (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))))
 
 (def (priorities)
-(let-hash (load-config)
-  (let ((url (format "~a/rest/api/2/priority" .url))
-        (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
-    (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
-      (for (priority body)
-        (let-hash priority
-          (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
-      (style-output outs)))))
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/2/priority" .url))
+          (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (for (priority body)
+          (let-hash priority
+            (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
+        (style-output outs)))))
 
 (def (index-summary)
-(let-hash (load-config)
-  (let ((url (format "~a/rest/api/2/index/summary" .url)))
-    (with ([status body] (rest-call 'get url default-headers .basic-auth))
-      (present-item body)))))
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/2/index/summary" .url)))
+      (with ([status body] (rest-call 'get url default-headers .basic-auth))
+        (present-item body)))))
 
 (def (members project)
   (let-hash (load-config)
@@ -441,12 +441,11 @@
     (let ((url (format "~a/rest/api/2/project" .url))
           (outs [[ "Id" "Key" "Name" "Type" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
-        (displayln "body is " (list? body) (length body))
         (for (project body)
           (when (table? project)
             (let-hash project
               (set! outs (cons [ .?id .?key .?name .?projectTypeKey ] outs))))))
-        (style-output outs))))
+      (style-output outs))))
 
 (def (properties issue)
   (let-hash (load-config)
