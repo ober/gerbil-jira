@@ -32,7 +32,7 @@
   :std/text/utf8
   :std/text/yaml
   :std/text/zlib
-  "~/src/oberlib/oberlib.ss" ;;:ober/oberlib
+  :ober/oberlib
   :std/xml/ssax)
 
 (export #t)
@@ -507,3 +507,10 @@
 (def (convert-names str)
   (let ((results ""))
     (pregexp-replace* "(\\s)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]")))
+
+(def (default-headers basic)
+  [
+   ["Accept" :: "*/*"]
+   ["Content-type" :: "application/json"]
+   ["Authorization" :: basic ]
+   ])
