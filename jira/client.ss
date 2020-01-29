@@ -1,4 +1,4 @@
-;; -*- Gerbil -*-
+; -*- Gerbil -*-
 ;;; © ober
 ;;; Jira client binary
 
@@ -339,7 +339,7 @@
                     (string-contains query "("))
               (format "~a" query)
               (format "text ~~ '~a'" query)))
-           (url (format "~a/rest/api/2/search" .url))
+           (url (format "~a/rest/api/2/search" .?url))
            (data (hash
                   ("jql" query)))
 
@@ -376,8 +376,8 @@
                        ("issuetype" (when (table? .?issuetype) (hash-ref .issuetype 'name)))
                        ("project" (when (table? .?project) (hash-ref .project 'name)))
                        ("watchers" (hash-ref .watches 'watchCount))
-                       ("url" (format "~a/browse/~a" ...url ..key))) headers) outs)))))
-            (style-output outs .style)))))))
+                       ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
+            (style-output outs ..style)))))))
 
 (def (comment issue comment)
   (let-hash (load-config)
