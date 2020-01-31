@@ -169,7 +169,7 @@
         (present-item body)))))
 
 (def (create-issue project summary issuetype assignee priority labels originalestimate description duedate parent)
-  (displayln "proj: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate " parent: " parent)
+  (displayln "project: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate " parent: " parent)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
            (fields (hash
@@ -227,7 +227,7 @@
       (exit 2)))
   (let ((converged (converge-template template metas project)))
     (let-hash converged
-      (let ((parent2 (create-issue .project
+      (let ((parent2 (create-issue (get-project-id .project metas)
                                    .summary
                                    .issuetype
                                    .assignee
