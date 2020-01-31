@@ -32,7 +32,8 @@
   :std/text/utf8
   :std/text/yaml
   :std/text/zlib
-  :ober/oberlib
+;;  :ober/oberlib
+  "~/src/oberlib/oberlib.ss"
   :std/xml/ssax)
 
 (export #t)
@@ -218,6 +219,8 @@
      )))
 
 (def (execute-template template metas project parent)
+  (displayln "metas: " (type-of metas))
+  (displayln "project: " (type-of project))
   (if (not (table? template))
     (begin
       (displayln "Error: execute-template passed non-table :"  template)
@@ -284,14 +287,15 @@
       .?id)))
 
 (def (get-issuetype-id name metas)
-  (let-hash metas
-    (let-hash .projects
-      (let ((id 0))
-        (for (issuetype .issuetypes)
-          (let-hash issuetype
-            (when (string=? .name name)
-              (set! id .id))))
-        id))))
+  (when (table? metas)
+    (let-hash metas
+      (let-hash (nth 0 .projects)
+        (let ((id 0))
+          (for (issuetype .issuetypes)
+            (let-hash issuetype
+              (when (string=? .name name)
+                (set! id .id))))
+          id)))))
 
 (def (parse-metas)
   (let-hash (load-config)
