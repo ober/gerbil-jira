@@ -560,7 +560,7 @@
 
 (def (convert-names str)
   (let ((results ""))
-    (pregexp-replace* "(\\s)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]")))
+    (pregexp-replace* "(\\s|^)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]")))
 
 (def (default-headers basic)
   [
