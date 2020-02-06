@@ -5,17 +5,16 @@
         :std/test
         :std/generic
         :ober/oberlib
-        "jira/client.ss")
+        "../jira/client.ss")
 
-(def (jira-test)
-  (def (test-convert-names)
-    (convert-names "This is a test for @janedoe to confluence"))
-  (let ((results (test-convert-names))
-        (expect "This is a test for [~janedoe] to confluence"))
-    (if (string=? results expect)
-      (displayln "pass")
-      (display (format "fail: got: ~a~% expected: ~a~%" results expect)))))
+(def (jira-test name got expect)
+  (displayln "#### Test: " name)
+  (if (string=? got expect)
+    (displayln "pass: ")
+    (display (format "fail: got:-> ~a~% expected:-> ~a~%" got expect))))
 
-    ;;(check-output (test-convert-names)
+(def (jira-tests)
+  (jira-test "convert name middle" (convert-names "This is a test for @janedoe to confluence") "This is a test for [~janedoe] to confluence")
+  (jira-test "convert name begingging" (convert-names "@janedoe this is a test for confluence") "[~janedoe] this is a test for confluence"))
 
-(jira-test)
+(jira-tests)
