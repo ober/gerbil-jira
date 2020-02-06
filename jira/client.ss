@@ -32,8 +32,7 @@
   :std/text/utf8
   :std/text/yaml
   :std/text/zlib
-;;  :ober/oberlib
-  "~/src/oberlib/oberlib.ss"
+  :ober/oberlib
   :std/xml/ssax)
 
 (export #t)
