@@ -15,6 +15,6 @@
 
 (def (jira-tests)
   (jira-test "convert name middle" (convert-names "This is a test for @janedoe to confluence") "This is a test for [~janedoe] to confluence")
-  (jira-test "convert name begingging" (convert-names "@janedoe this is a test for confluence") "[~janedoe] this is a test for confluence"))
+  (jira-test "convert name beginning" (convert-names "@janedoe this is a test for confluence") "[~janedoe] this is a test for confluence"))
 
 (jira-tests)
