@@ -351,36 +351,38 @@
                              (length>n? sf 1))
                       sf
                       df)))
-
-      (with ([ status body ] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
-        (unless status
-          (error body))
-        (if (table? body)
-          (let-hash body
-            (set! outs (cons headers outs))
-            (for (issue .issues)
-              (let-hash issue
-                (dp (hash->list .fields))
-                (let-hash .fields
-                  (set! outs
-                    (cons
-                     (filter-row-hash
-                      (hash
-                       ("key" ..key)
-                       ("description" .?description)
-                       ("summary" .?summary)
-                       ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
-                       ("updated" (when .?updated (date->custom .updated)))
-                       ("labels" .?labels)
-                       ("status" (when (table? .?status) (hash-ref .status 'name)))
-                       ("assignee" (when (table? .?assignee) (hash-ref .assignee 'name)))
-                       ("creator" (when (table? .?creator) (hash-ref .creator 'name)))
-                       ("reporter" (when (table? .?reporter) (hash-ref .reporter 'name)))
-                       ("issuetype" (when (table? .?issuetype) (hash-ref .issuetype 'name)))
-                       ("project" (when (table? .?project) (hash-ref .project 'name)))
-                       ("watchers" (hash-ref .watches 'watchCount))
-                       ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-            (style-output outs ..style)))))))
+      (let lp ((offset 0))
+        (with ([ status body ] (rest-call 'post (format "~a?startAt=~a&maxResults=200" url offset) (default-headers .basic-auth) (json-object->string data)))
+          (unless status
+            (error body))
+          (if (table? body)
+            (let-hash body
+              (set! outs (cons headers outs))
+              (for (issue .issues)
+                (let-hash issue
+                  (dp (hash->list .fields))
+                  (let-hash .fields
+                    (set! outs
+                      (cons
+                       (filter-row-hash
+                        (hash
+                         ("key" ..key)
+                         ("description" .?description)
+                         ("summary" .?summary)
+                         ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
+                         ("updated" (when .?updated (date->custom .updated)))
+                         ("labels" .?labels)
+                         ("status" (when (table? .?status) (hash-ref .status 'name)))
+                         ("assignee" (when (table? .?assignee) (hash-ref .assignee 'name)))
+                         ("creator" (when (table? .?creator) (hash-ref .creator 'name)))
+                         ("reporter" (when (table? .?reporter) (hash-ref .reporter 'name)))
+                         ("issuetype" (when (table? .?issuetype) (hash-ref .issuetype 'name)))
+                         ("project" (when (table? .?project) (hash-ref .project 'name)))
+                         ("watchers" (hash-ref .watches 'watchCount))
+                         ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
+              (when (> .?total (+ .startAt .maxResults))
+                (lp (+ .startAt .maxResults)))))))
+      (style-output outs "org-mode"))))
 
 (def (comment issue comment)
   (let-hash (load-config)
