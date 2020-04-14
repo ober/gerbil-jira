@@ -345,7 +345,6 @@
            (url (format "~a/rest/api/2/search" .?url))
            (data (hash
                   ("jql" query)))
-
            (headers (if (and sf
                              (list? sf)
                              (length>n? sf 1))
@@ -425,38 +424,43 @@
         (when
             (table? body)
           (let-hash body
-            (let-hash .fields
-              (displayln "** Summary: " .summary)
-              (when .?status (let-hash .status (displayln "** Description: " .description) (displayln "** State: " .name)))
-              (when .?priority (let-hash .priority (displayln "** Priority: " .name)))
-              (when .?issuetype (let-hash .issuetype   (displayln "** Issue Type: " .name)))
-              (displayln "** Description: " .description)
-              (displayln "** Summary: " .summary)
-              (displayln "** Last Viewed: " .lastViewed)
-              (displayln "** Created: " .created)
+            (when (and .?fields
+                       (table? .fields))
+              (let-hash .fields
+                (displayln "** Summary: " .summary)
+                (when .?status (let-hash .?status (displayln "** Description: " .description) (displayln "** State: " .name)))
+                (when .?priority (let-hash .?priority (displayln "** Priority: " .name)))
+                (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .name)))
+                (displayln "** Description: " .description)
+                (displayln "** Summary: " .summary)
+                (displayln "** Last Viewed: " .lastViewed)
+                (displayln "** Created: " .created)
 
-              (let-hash .status (displayln "** Status: " .name))
-              (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
-              (let-hash .project (displayln "** Project: " .name))
-              (let-hash .watches (displayln "** Watch Count: " .watchCount))
-              (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
-              (displayln "** Subtasks: ")
-              (when .?subtasks
-                (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
-                  (for (subtask .subtasks)
-                    (let-hash subtask
-                      (let-hash .fields
-                        (set! outs (cons [ ..?key .?summary (hash-ref .status 'name)  (hash-ref .priority 'name) ] outs)))))
-                  (style-output outs (or .?style "org-mode"))))
-              (displayln "** Comments: ")
-              (let-hash .comment
-                (for (comment .comments)
-                  (let-hash comment
-                    (let-hash .author
-                      (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
-                    (displayln (pregexp-replace* "*" .body "@")))))
-              (let-hash .assignee
-                (displayln "** Assignee: " .displayName " " .name " " .emailAddress)))))))))
+                (let-hash .status (displayln "** Status: " .name))
+                (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
+                (let-hash .project (displayln "** Project: " .name))
+                (let-hash .watches (displayln "** Watch Count: " .watchCount))
+                (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
+                (displayln "** Subtasks: ")
+                (when .?subtasks
+                  (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
+                    (for (subtask .subtasks)
+                      (let-hash subtask
+                        (let-hash .fields
+                          (let ((pri (if (table? .?priority)
+                                       (hash-get .?priority 'name)
+                                       "N/A")))
+                            (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
+                    (style-output outs (or .?style "org-mode"))))
+                (displayln "** Comments: ")
+                (let-hash .comment
+                  (for (comment .comments)
+                    (let-hash comment
+                      (let-hash .author
+                        (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
+                      (displayln (pregexp-replace* "*" .body "@")))))
+                (let-hash .assignee
+                  (displayln "** Assignee: " .displayName " " .name " " .emailAddress))))))))))
 
 (def (priorities)
   (let-hash (load-config)
