@@ -3844,7 +3844,7 @@ paths:
         - description: >-
             the maximum number of issues to return (defaults to 50). The maximum
             allowable value is
-                                  dictated by the JIRA property 'jira.search.views.default.max'. If you specify a value that is higher than this
+               y                   dictated by the JIRA property 'jira.search.views.default.max'. If you specify a value that is higher than this
                                   number, your search results will be truncated.
           format: int32
           in: query
