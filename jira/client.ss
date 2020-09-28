@@ -327,7 +327,7 @@
                  ("fields"
                   (hash
                    ("labels" [ label ]))))))
-      (with ([status body] (rest-call 'pput url (default-headers .basic-auth) (json-object->string data)))
+      (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
         (present-item body)))))
