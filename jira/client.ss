@@ -1,44 +1,26 @@
-; -*- Gerbil -*-
+;; -*- Gerbil -*-
 ;;; © ober
-;;; Jira client binary
+;;; Jira client Library
 
 (import
   :gerbil/gambit
-  :gerbil/gambit/ports
   :std/crypto/cipher
-  :std/crypto/etc
-  :std/crypto/libcrypto
-  :std/db/dbi
-  :std/debug/heap
   :std/iter
-  :std/error
   :std/format
-  :std/generic
   :std/generic/dispatch
-  :std/misc/channel
   :std/misc/list
-  :std/misc/ports
-  :std/net/address
-  :std/net/request
-  :std/net/uri
   :std/pregexp
-  :std/srfi/1
   :std/srfi/13
-  :std/srfi/19
-  :std/srfi/95
   :std/sugar
   :std/text/base64
   :std/text/json
-  :std/text/utf8
   :std/text/yaml
-  :std/text/zlib
-  :ober/oberlib
-  :std/xml/ssax)
+  :ober/oberlib)
 
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.09")
+(def version "0.10")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -58,7 +40,7 @@
       (when .?secrets
 	(let-hash (u8vector->object (base64-decode .secrets))
 	  (let ((password (get-password-from-config .key .iv .password)))
-	    (hash-put! config 'basic-auth (make-basic-auth ..?user password))))))
+            (hash-put! config 'basic-auth (make-basic-auth ..?user password))))))
     config))
 
 (def (q alias)
@@ -372,11 +354,11 @@
                          ("updated" (when .?updated (date->custom .updated)))
                          ("labels" .?labels)
                          ("status" (when (table? .?status) (hash-ref .status 'name)))
-                         ("assignee" (when (table? .?assignee) (hash-ref .assignee 'name)))
-                         ("creator" (when (table? .?creator) (hash-ref .creator 'name)))
-                         ("reporter" (when (table? .?reporter) (hash-ref .reporter 'name)))
-                         ("issuetype" (when (table? .?issuetype) (hash-ref .issuetype 'name)))
-                         ("project" (when (table? .?project) (hash-ref .project 'name)))
+                         ("assignee" (when (table? .?assignee) (let-hash .assignee .?name)))
+                         ("creator" (when (table? .?creator) (let-hash .creator .?name)))
+                         ("reporter" (when (table? .?reporter) (let-hash .reporter .?name)))
+                         ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
+                         ("project" (when (table? .?project) (let-hash .project .?name)))
                          ("watchers" (hash-ref .watches 'watchCount))
                          ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
               (when (> .?total (+ .startAt .maxResults))
