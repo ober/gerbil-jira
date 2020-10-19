@@ -410,19 +410,19 @@
                        (table? .fields))
               (let-hash .fields
                 (displayln "** Summary: " .summary)
-                (when .?status (let-hash .?status (displayln "** Description: " .description) (displayln "** State: " .name)))
-                (when .?priority (let-hash .?priority (displayln "** Priority: " .name)))
-                (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .name)))
-                (displayln "** Description: " .description)
-                (displayln "** Summary: " .summary)
-                (displayln "** Last Viewed: " .lastViewed)
-                (displayln "** Created: " .created)
+                (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
+                (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
+                (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
+                (displayln "** Description: " .?description)
+                (displayln "** Summary: " .?summary)
+                (displayln "** Last Viewed: " .?lastViewed)
+                (displayln "** Created: " .?created)
 
-                (let-hash .status (displayln "** Status: " .name))
-                (let-hash .reporter (displayln "** Reporter: " .displayName " " .name " " .emailAddress))
-                (let-hash .project (displayln "** Project: " .name))
-                (let-hash .watches (displayln "** Watch Count: " .watchCount))
-                (let-hash .creator (displayln "** Creator: " .displayName " " .name " " .emailAddress))
+                (let-hash .status (displayln "** Status: " .?name))
+                (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?name " " .?emailAddress))
+                (let-hash .project (displayln "** Project: " .?name))
+                (let-hash .watches (displayln "** Watch Count: " .?watchCount))
+                (let-hash .creator (displayln "** Creator: " .?displayName " " .?name " " .?emailAddress))
                 (displayln "** Subtasks: ")
                 (when .?subtasks
                   (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
@@ -439,10 +439,10 @@
                   (for (comment .comments)
                     (let-hash comment
                       (let-hash .author
-                        (displayln "*** Comment: " .displayName "  on " ..updated " said:" ))
+                        (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
                       (displayln (pregexp-replace* "*" .body "@")))))
                 (let-hash .assignee
-                  (displayln "** Assignee: " .displayName " " .name " " .emailAddress))))))))))
+                  (displayln "** Assignee: " .?displayName " " .?name " " .?emailAddress))))))))))
 
 (def (priorities)
   (let-hash (load-config)
