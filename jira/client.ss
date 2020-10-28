@@ -524,7 +524,6 @@
                             (length>n? sf 1))
                      sf
                      df)))
-     (displayln users)
      (when (list? users)
        (set! outs (cons headers outs))
        (for (user users)
