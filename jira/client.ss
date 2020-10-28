@@ -514,41 +514,43 @@
 
 
 (def (users)
- (let-hash (load-config)
+  (let-hash (load-config)
    (let* ((users (users-hash))
-         (outs [])
-         (sf .?users-fields)
-         (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
-         (headers (if (and sf
-                           (list? sf)
-                           (length>n? sf 1))
-                    sf
-                    df)))
+          (outs [])
+          (sf .?users-fields)
+          (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
+          (headers (if (and sf
+                            (list? sf)
+                            (length>n? sf 1))
+                     sf
+                     df)))
+     (displayln users)
      (when (list? users)
-       (set! users (cons headers users))
-       (let-hash user
-         (set! outs
-           (cons
-            (filter-row-hash
-             (hash
-              ("displayName" .?displayName)
-              ("emailAddress" (if .?emailAddress
-                                .emailAddress
-                                "N/A"))
-              ("accountId" (if .?accountId
-                             .accountId
-                             "N/A"))
-              ("active" (if .?active
-                          .active
-                          "N/A"))
-              ("timeZone" (if .?timeZone
-                            .timeZone
-                            "N/A"))
-              ("accountType" (if .?accountType
-                               .accountType
+       (set! outs (cons headers outs))
+       (for (user users)
+         (let-hash user
+           (set! outs
+             (cons
+              (filter-row-hash
+               (hash
+                ("displayName" .?displayName)
+                ("emailAddress" (if .?emailAddress
+                                  .emailAddress
+                                  "N/A"))
+                ("accountId" (if .?accountId
+                               .accountId
                                "N/A"))
-              ("url" .?self)
-              ) headers) outs))))
+                ("active" (if .?active
+                            .active
+                            "N/A"))
+                ("timeZone" (if .?timeZone
+                              .timeZone
+                              "N/A"))
+                ("accountType" (if .?accountType
+                                 .accountType
+                                 "N/A"))
+                ("url" .?self)
+                ) headers) outs)))))
      (style-output outs "org-mode"))))
 
 (def (users-hash)
