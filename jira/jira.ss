@@ -63,6 +63,7 @@
    ("label" (hash (description: "label a jira issue") (usage: "label <jira issue> <label>") (count: 2)))
    ("metadata" (hash (description: "Get definitions of fields available for issue.") (usage: "metadata <issue name>") (count: 1)))
    ("members" (hash (description: "Get list of members of a given project.") (usage: "members <Project Name>") (count: 1)))
+   ("users" (hash (description: "Get list of users.") (usage: "users") (count: 0)))
    ("open" (hash (description: "Open Jira Issue in browser.") (usage: "open <Issue Number>") (count: 1)))
    ("projects" (hash (description: "List all projects") (usage: "projects") (count: 0)))
    ("properties" (hash (description: "Fetch all properties available for issue") (usage: "properties <issue id>") (count: 1)))
