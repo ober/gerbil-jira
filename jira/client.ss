@@ -512,54 +512,62 @@
           (error body))
         (present-item body)))))
 
+
 (def (users)
+ (let-hash (load-config)
+   (let* ((users (users-hash))
+         (outs [])
+         (sf .?users-fields)
+         (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
+         (headers (if (and sf
+                           (list? sf)
+                           (length>n? sf 1))
+                    sf
+                    df)))
+     (when (list? users)
+       (set! users (cons headers users))
+       (let-hash user
+         (set! outs
+           (cons
+            (filter-row-hash
+             (hash
+              ("displayName" .?displayName)
+              ("emailAddress" (if .?emailAddress
+                                .emailAddress
+                                "N/A"))
+              ("accountId" (if .?accountId
+                             .accountId
+                             "N/A"))
+              ("active" (if .?active
+                          .active
+                          "N/A"))
+              ("timeZone" (if .?timeZone
+                            .timeZone
+                            "N/A"))
+              ("accountType" (if .?accountType
+                               .accountType
+                               "N/A"))
+              ("url" .?self)
+              ) headers) outs))))
+     (style-output outs "org-mode"))))
+
+(def (users-hash)
   (let-hash (load-config)
-    (let* ((outs [])
-           (sf .?users-fields)
-           (url (format "~a/rest/api/2/users" .url))
-           (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
-           (headers (if (and sf
-                             (list? sf)
-                             (length>n? sf 1))
-                      sf
-                      df)))
+    (let* ((users [])
+           (url (format "~a/rest/api/2/users" .url)))
       (let lp ((offset 0))
-        (displayln "offset: " offset)
         (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
           (unless status
             (error body))
           (when (and
                   (list? body)
                   (length>n? body 0))
-            (set! outs (cons headers outs))
+
             (for (user body)
               (when (table? user)
-;;                (displayln (hash->list user))
-                (let-hash user
-                  (set! outs
-                    (cons
-                     (filter-row-hash
-                      (hash
-                       ("displayName" .?displayName)
-                       ("emailAddress" (if .?emailAddress
-                                         .emailAddress
-                                         "N/A"))
-                       ("accountId" (if .?accountId
-                                      .accountId
-                                      "N/A"))
-                       ("active" (if .?active
-                                   .active
-                                   "N/A"))
-                       ("timeZone" (if .?timeZone
-                                     .timeZone
-                                     "N/A"))
-                       ("accountType" (if .?accountType
-                                        .accountType
-                                        "N/A"))
-                       ("url" .?self)
-                       ) headers) outs)))))
+                (set! users (cons user users))))
             (lp (+ offset 1000)))))
-      (style-output outs "org-mode"))))
+      users)))
 
 (def (projects)
   (let-hash (load-config)
