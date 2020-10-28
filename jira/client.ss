@@ -534,18 +534,28 @@
             (set! outs (cons headers outs))
             (for (user body)
               (when (table? user)
-                (displayln (hash->list user))
+;;                (displayln (hash->list user))
                 (let-hash user
                   (set! outs
                     (cons
                      (filter-row-hash
                       (hash
                        ("displayName" .?displayName)
-                       ("emailAddress" .?emailAddress)
-                       ("accountId" .?accountId)
-                       ("active" .?active)
-                       ("timeZone" .?timeZone)
-                       ("accountType" .?accountType)
+                       ("emailAddress" (if .?emailAddress
+                                         .emailAddress
+                                         "N/A"))
+                       ("accountId" (if .?accountId
+                                      .accountId
+                                      "N/A"))
+                       ("active" (if .?active
+                                   .active
+                                   "N/A"))
+                       ("timeZone" (if .?timeZone
+                                     .timeZone
+                                     "N/A"))
+                       ("accountType" (if .?accountType
+                                        .accountType
+                                        "N/A"))
                        ("url" .?self)
                        ) headers) outs)))))
             (lp (+ offset 1000)))))
