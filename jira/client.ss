@@ -20,7 +20,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.12")
+(def version "0.13")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -140,6 +140,16 @@
             (let-hash watcher
               (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
       (style-output out .style))))
+
+(def (accound-id-for user)
+  " Return account id for user"
+
+  )
+
+(def (user-for-accountid id)
+  " Return the username for an account id "
+
+  )
 
 (def (issuetype type)
   (let-hash (load-config)
@@ -379,7 +389,7 @@
 (def (assign issue user)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
-          (data (hash ("name" user))))
+          (data (hash ("accountId" user))))
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -408,8 +418,37 @@
           (let-hash body
             (when (and .?fields
                        (table? .fields))
+              (begin
+                (dp (pi .fields))
+
               (let-hash .fields
+                ;; (pi (car .?customfield_10070))
+                ;; (pi .?customfield_10722)
+                ;; (pi .?customfield_10896)
+                ;; (pi .?customfield_11414)
+                ;; (pi .?customfield_11417)
+                ;; (pi .?customfield_12091)
+                ;; (pi .?customfield_12191)
+                ;; (pi .?customfield_12292)
+                ;; (pi .?customfield_12499)
+                ;; (pi .?customfield_12991)
+                ;; (pi .?customfield_14813)
+                ;; (pi .?customfield_16692)
+                ;; (pi .?issuerestriction)
+                ;; (pi .?issuetype)
+                ;; (pi .?priority)
+                ;; (pi .?progress)
+                ;; (pi .?project)
+                ;; (pi .?reporter)
+                ;; (pi .?security)
+                ;; (pi .?status)
+                ;; (pi .?timetracking)
+                ;; (pi .?votes)
+                ;; (pi .?watches)
+                ;; (pi .?worklog)
+                ;; (pi .?aggregateprogress)
                 (displayln "** Summary: " .summary)
+                (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
                 (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
                 (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
                 (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
@@ -417,12 +456,11 @@
                 (displayln "** Summary: " .?summary)
                 (displayln "** Last Viewed: " .?lastViewed)
                 (displayln "** Created: " .?created)
-
                 (let-hash .status (displayln "** Status: " .?name))
-                (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?name " " .?emailAddress))
+                (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
                 (let-hash .project (displayln "** Project: " .?name))
                 (let-hash .watches (displayln "** Watch Count: " .?watchCount))
-                (let-hash .creator (displayln "** Creator: " .?displayName " " .?name " " .?emailAddress))
+                (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
                 (displayln "** Subtasks: ")
                 (when .?subtasks
                   (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
@@ -441,8 +479,10 @@
                       (let-hash .author
                         (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
                       (displayln (pregexp-replace* "*" .body "@")))))
-                (let-hash .assignee
-                  (displayln "** Assignee: " .?displayName " " .?name " " .?emailAddress))))))))))
+                (if (table? .?assignee)
+                  (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
+                  (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee))))
+                  )))))))))
 
 (def (priorities)
   (let-hash (load-config)
@@ -471,6 +511,45 @@
         (unless status
           (error body))
         (present-item body)))))
+
+(def (users)
+  (let-hash (load-config)
+    (let* ((outs [])
+           (sf .?users-fields)
+           (url (format "~a/rest/api/2/users" .url))
+           (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
+           (headers (if (and sf
+                             (list? sf)
+                             (length>n? sf 1))
+                      sf
+                      df)))
+      (let lp ((offset 0))
+        (displayln "offset: " offset)
+        (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
+          (unless status
+            (error body))
+          (when (and
+                  (list? body)
+                  (length>n? body 0))
+            (set! outs (cons headers outs))
+            (for (user body)
+              (when (table? user)
+                (displayln (hash->list user))
+                (let-hash user
+                  (set! outs
+                    (cons
+                     (filter-row-hash
+                      (hash
+                       ("displayName" .?displayName)
+                       ("emailAddress" .?emailAddress)
+                       ("accountId" .?accountId)
+                       ("active" .?active)
+                       ("timeZone" .?timeZone)
+                       ("accountType" .?accountType)
+                       ("url" .?self)
+                       ) headers) outs)))))
+            (lp (+ offset 1000)))))
+      (style-output outs "org-mode"))))
 
 (def (projects)
   (let-hash (load-config)
