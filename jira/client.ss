@@ -206,8 +206,7 @@
      (originalestimate (interpol-from-env (hash-get template "estimate")))
      (priority (interpol-from-env (hash-get template "priority")))
      (project (interpol-from-env (hash-get template "project")))
-     (summary (interpol-from-env (hash-get template "summary")))
-     )))
+     (summary (interpol-from-env (hash-get template "summary"))))))
 
 (def (execute-template template metas project parent)
   (displayln "metas: " (type-of metas))
@@ -421,67 +420,67 @@
               (begin
                 (dp (pi .fields))
 
-              (let-hash .fields
-                ;; (pi (car .?customfield_10070))
-                ;; (pi .?customfield_10722)
-                ;; (pi .?customfield_10896)
-                ;; (pi .?customfield_11414)
-                ;; (pi .?customfield_11417)
-                ;; (pi .?customfield_12091)
-                ;; (pi .?customfield_12191)
-                ;; (pi .?customfield_12292)
-                ;; (pi .?customfield_12499)
-                ;; (pi .?customfield_12991)
-                ;; (pi .?customfield_14813)
-                ;; (pi .?customfield_16692)
-                ;; (pi .?issuerestriction)
-                ;; (pi .?issuetype)
-                ;; (pi .?priority)
-                ;; (pi .?progress)
-                ;; (pi .?project)
-                ;; (pi .?reporter)
-                ;; (pi .?security)
-                ;; (pi .?status)
-                ;; (pi .?timetracking)
-                ;; (pi .?votes)
-                ;; (pi .?watches)
-                ;; (pi .?worklog)
-                ;; (pi .?aggregateprogress)
-                (displayln "** Summary: " .summary)
-                (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
-                (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
-                (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
-                (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
-                (displayln "** Description: " .?description)
-                (displayln "** Summary: " .?summary)
-                (displayln "** Last Viewed: " .?lastViewed)
-                (displayln "** Created: " .?created)
-                (let-hash .status (displayln "** Status: " .?name))
-                (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
-                (let-hash .project (displayln "** Project: " .?name))
-                (let-hash .watches (displayln "** Watch Count: " .?watchCount))
-                (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
-                (displayln "** Subtasks: ")
-                (when .?subtasks
-                  (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
-                    (for (subtask .subtasks)
-                      (let-hash subtask
-                        (let-hash .fields
-                          (let ((pri (if (table? .?priority)
-                                       (hash-get .?priority 'name)
-                                       "N/A")))
-                            (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
-                    (style-output outs (or .?style "org-mode"))))
-                (displayln "** Comments: ")
-                (let-hash .comment
-                  (for (comment .comments)
-                    (let-hash comment
-                      (let-hash .author
-                        (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
-                      (displayln (pregexp-replace* "*" .body "@")))))
-                (if (table? .?assignee)
-                  (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
-                  (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee))))
+                (let-hash .fields
+                  ;; (pi (car .?customfield_10070))
+                  ;; (pi .?customfield_10722)
+                  ;; (pi .?customfield_10896)
+                  ;; (pi .?customfield_11414)
+                  ;; (pi .?customfield_11417)
+                  ;; (pi .?customfield_12091)
+                  ;; (pi .?customfield_12191)
+                  ;; (pi .?customfield_12292)
+                  ;; (pi .?customfield_12499)
+                  ;; (pi .?customfield_12991)
+                  ;; (pi .?customfield_14813)
+                  ;; (pi .?customfield_16692)
+                  ;; (pi .?issuerestriction)
+                  ;; (pi .?issuetype)
+                  ;; (pi .?priority)
+                  ;; (pi .?progress)
+                  ;; (pi .?project)
+                  ;; (pi .?reporter)
+                  ;; (pi .?security)
+                  ;; (pi .?status)
+                  ;; (pi .?timetracking)
+                  ;; (pi .?votes)
+                  ;; (pi .?watches)
+                  ;; (pi .?worklog)
+                  ;; (pi .?aggregateprogress)
+                  (displayln "** Summary: " .summary)
+                  (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
+                  (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
+                  (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
+                  (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
+                  (displayln "** Description: " .?description)
+                  (displayln "** Summary: " .?summary)
+                  (displayln "** Last Viewed: " .?lastViewed)
+                  (displayln "** Created: " .?created)
+                  (let-hash .status (displayln "** Status: " .?name))
+                  (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
+                  (let-hash .project (displayln "** Project: " .?name))
+                  (let-hash .watches (displayln "** Watch Count: " .?watchCount))
+                  (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
+                  (displayln "** Subtasks: ")
+                  (when .?subtasks
+                    (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
+                      (for (subtask .subtasks)
+                        (let-hash subtask
+                          (let-hash .fields
+                            (let ((pri (if (table? .?priority)
+                                         (hash-get .?priority 'name)
+                                         "N/A")))
+                              (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
+                      (style-output outs (or .?style "org-mode"))))
+                  (displayln "** Comments: ")
+                  (let-hash .comment
+                    (for (comment .comments)
+                      (let-hash comment
+                        (let-hash .author
+                          (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
+                        (displayln (pregexp-replace* "*" .body "@")))))
+                  (if (table? .?assignee)
+                    (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
+                    (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee))))
                   )))))))))
 
 (def (priorities)
@@ -512,45 +511,44 @@
           (error body))
         (present-item body)))))
 
-
 (def (users)
   (let-hash (load-config)
-   (let* ((users (users-hash))
-          (outs [])
-          (sf .?users-fields)
-          (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
-          (headers (if (and sf
-                            (list? sf)
-                            (length>n? sf 1))
-                     sf
-                     df)))
-     (when (list? users)
-       (set! outs (cons headers outs))
-       (for (user users)
-         (let-hash user
-           (set! outs
-             (cons
-              (filter-row-hash
-               (hash
-                ("displayName" .?displayName)
-                ("emailAddress" (if .?emailAddress
-                                  .emailAddress
-                                  "None"))
-                ("accountId" (if .?accountId
-                               .accountId
-                               "None"))
-                ("active" (if .?active
-                            "Active"
-                            "Inactive"))
-                ("timeZone" (if .?timeZone
-                              .timeZone
-                              "N/A"))
-                ("accountType" (if .?accountType
-                                 .accountType
-                                 "N/A"))
-                ("url" .?self)
-                ) headers) outs)))))
-     (style-output outs "org-mode"))))
+    (let* ((users (users-hash))
+           (outs [])
+           (sf .?users-fields)
+           (df [ "displayName" "emailAddress" "accountId" "active" "timeZone" "accountType" "url" ])
+           (headers (if (and sf
+                             (list? sf)
+                             (length>n? sf 1))
+                      sf
+                      df)))
+      (when (list? users)
+        (set! outs (cons headers outs))
+        (for (user users)
+          (let-hash user
+            (set! outs
+              (cons
+               (filter-row-hash
+                (hash
+                 ("displayName" .?displayName)
+                 ("emailAddress" (if .?emailAddress
+                                   .emailAddress
+                                   "None"))
+                 ("accountId" (if .?accountId
+                                .accountId
+                                "None"))
+                 ("active" (if .?active
+                             "Active"
+                             "Inactive"))
+                 ("timeZone" (if .?timeZone
+                               .timeZone
+                               "N/A"))
+                 ("accountType" (if .?accountType
+                                  .accountType
+                                  "N/A"))
+                 ("url" .?self)
+                 ) headers) outs)))))
+      (style-output outs "org-mode"))))
 
 (def (users-hash)
   (let-hash (load-config)
