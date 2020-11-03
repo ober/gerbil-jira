@@ -535,13 +535,13 @@
                 ("displayName" .?displayName)
                 ("emailAddress" (if .?emailAddress
                                   .emailAddress
-                                  "N/A"))
+                                  "None"))
                 ("accountId" (if .?accountId
                                .accountId
-                               "N/A"))
+                               "None"))
                 ("active" (if .?active
-                            .active
-                            "N/A"))
+                            "Active"
+                            "Inactive"))
                 ("timeZone" (if .?timeZone
                               .timeZone
                               "N/A"))
