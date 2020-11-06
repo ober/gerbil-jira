@@ -525,6 +525,7 @@
       (when (list? users)
         (set! outs (cons headers outs))
         (for (user users)
+          (pi user)
           (let-hash user
             (set! outs
               (cons
@@ -551,22 +552,41 @@
       (style-output outs "org-mode"))))
 
 (def (users-hash)
-  (let-hash (load-config)
-    (let* ((users [])
-           (url (format "~a/rest/api/2/users" .url)))
-      (let lp ((offset 0))
-        (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
-          (unless status
-            (error body))
-          (when (and
-                  (list? body)
-                  (length>n? body 0))
+  "Fetch users, or read from local cache"
+  (let* ((user-list "~/.jira-users.yaml")
+         (users []))
+    (if (modified-since? user-list (* 90 24 3600))
+      (begin
+        (displayln "loading from cache")
+        (set! users (car (yaml-load user-list))))
+      (let-hash (load-config)
+        (let* ((users [])
+               (url (format "~a/rest/api/2/users" .url)))
+          (let lp ((offset 0))
+            (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
+              (unless status
+                (error body))
+              (when (and
+                      (list? body)
+                      (length>n? body 0))
 
-            (for (user body)
-              (when (table? user)
-                (set! users (cons user users))))
-            (lp (+ offset 1000)))))
-      users)))
+                (for (user body)
+                  (when (table? user)
+                    (set! users (cons user users))))
+                (lp (+ offset 1000)))))
+          (dump-users-yaml users))))
+    users))
+
+(def (dump-users-yaml users)
+  " Write out the users hash to ~/.jira-users.yaml "
+  (let ((user-list "~/.jira-users.yaml"))
+    (unless (list? users)
+      (pi users)
+      (error "Users is not list!"))
+    (try
+     (yaml-dump user-list users)
+     (catch (e)
+       (raise e)))))
 
 (def (projects)
   (let-hash (load-config)
