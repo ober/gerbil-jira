@@ -526,7 +526,7 @@
         (set! outs (cons headers outs))
         (for (user users)
           (unless (table? user)
-            (displayln "user is not a table, but a " (type-of user)))
+            (error "user is not a table, but a " (type-of user)))
           (when (table? user)
             (let-hash user
               (set! outs
