@@ -525,7 +525,6 @@
       (when (list? users)
         (set! outs (cons headers outs))
         (for (user users)
-          (pi user)
           (let-hash user
             (set! outs
               (cons
@@ -581,7 +580,6 @@
   " Write out the users hash to ~/.jira-users.yaml "
   (let ((user-list "~/.jira-users.yaml"))
     (unless (list? users)
-      (pi users)
       (error "Users is not list!"))
     (try
      (yaml-dump user-list users)
