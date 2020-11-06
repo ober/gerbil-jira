@@ -525,56 +525,58 @@
       (when (list? users)
         (set! outs (cons headers outs))
         (for (user users)
-          (let-hash user
-            (set! outs
-              (cons
-               (filter-row-hash
-                (hash
-                 ("displayName" .?displayName)
-                 ("emailAddress" (if .?emailAddress
-                                   .emailAddress
-                                   "None"))
-                 ("accountId" (if .?accountId
-                                .accountId
-                                "None"))
-                 ("active" (if .?active
-                             "Active"
-                             "Inactive"))
-                 ("timeZone" (if .?timeZone
-                               .timeZone
-                               "N/A"))
-                 ("accountType" (if .?accountType
-                                  .accountType
-                                  "N/A"))
-                 ("url" .?self)
-                 ) headers) outs)))))
+          (unless (table? user)
+            (displayln "user is not a table, but a " (type-of user)))
+          (when (table? user)
+            (let-hash user
+              (set! outs
+                (cons
+                 (filter-row-hash
+                  (hash
+                   ("displayName" .?displayName)
+                   ("emailAddress" (if .?emailAddress
+                                     .emailAddress
+                                     "None"))
+                   ("accountId" (if .?accountId
+                                  .accountId
+                                  "None"))
+                   ("active" (if .?active
+                               "Active"
+                               "Inactive"))
+                   ("timeZone" (if .?timeZone
+                                 .timeZone
+                                 "N/A"))
+                   ("accountType" (if .?accountType
+                                    .accountType
+                                    "N/A"))
+                   ("url" .?self)
+                   ) headers) outs))))))
       (style-output outs "org-mode"))))
 
 (def (users-hash)
   "Fetch users, or read from local cache"
-  (let* ((user-list "~/.jira-users.yaml")
-         (users []))
+  (let ((user-list "~/.jira-users")
+        (users []))
     (if (modified-since? user-list (* 90 24 3600))
       (begin
-        (displayln "loading from cache")
-        (set! users (car (yaml-load user-list))))
-      (let-hash (load-config)
-        (let* ((users [])
-               (url (format "~a/rest/api/2/users" .url)))
-          (let lp ((offset 0))
-            (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
-              (unless status
-                (error body))
-              (when (and
-                      (list? body)
-                      (length>n? body 0))
-
-                (for (user body)
-                  (when (table? user)
-                    (set! users (cons user users))))
-                (lp (+ offset 1000)))))
-          (dump-users-yaml users))))
-    users))
+        (displayln "using cache. yay!")
+        (set! users (read-obj-from-file user-list)))
+      (begin
+        (let-hash (load-config)
+          (let ((url (format "~a/rest/api/2/users" .url)))
+            (let lp ((offset 0))
+              (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
+                (unless status
+                  (error body))
+                (when (and
+                        (list? body)
+                        (length>n? body 0))
+                  (for (user body)
+                    (when (table? user)
+                      (set! users (cons user users))))
+                  (lp (+ offset 1000))))))
+          (write-obj-to-file user-list users))))
+      users))
 
 (def (dump-users-yaml users)
   " Write out the users hash to ~/.jira-users.yaml "
