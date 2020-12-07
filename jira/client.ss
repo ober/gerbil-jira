@@ -28,9 +28,12 @@
 (def program-name "jira")
 
 (def good-ips (hash))
+(def user-to-id (hash))
+(def id-to-user (hash))
 
 (def (load-config)
   (let ((config (hash)))
+    ;;(load-user-hashes)
     (hash-for-each
      (lambda (k v)
        (hash-put! config (string->symbol k) v))
@@ -143,6 +146,7 @@
 
 (def (accound-id-for user)
   " Return account id for user"
+
 
   )
 
@@ -363,9 +367,9 @@
                          ("updated" (when .?updated (date->custom .updated)))
                          ("labels" .?labels)
                          ("status" (when (table? .?status) (hash-ref .status 'name)))
-                         ("assignee" (when (table? .?assignee) (let-hash .assignee .?name)))
-                         ("creator" (when (table? .?creator) (let-hash .creator .?name)))
-                         ("reporter" (when (table? .?reporter) (let-hash .reporter .?name)))
+                         ("assignee" (when (table? .?assignee) (let-hash .assignee (car (pregexp-split "@" .?emailAddress)))))
+                         ("creator" (when (table? .?creator) (let-hash .creator (car (pregexp-split "@" .?emailAddress)))))
+                         ("reporter" (when (table? .?reporter) (let-hash .reporter (car (pregexp-split "@" .?emailAddress)))))
                          ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
                          ("project" (when (table? .?project) (let-hash .project .?name)))
                          ("watchers" (hash-ref .watches 'watchCount))
@@ -421,31 +425,6 @@
                 (dp (pi .fields))
 
                 (let-hash .fields
-                  ;; (pi (car .?customfield_10070))
-                  ;; (pi .?customfield_10722)
-                  ;; (pi .?customfield_10896)
-                  ;; (pi .?customfield_11414)
-                  ;; (pi .?customfield_11417)
-                  ;; (pi .?customfield_12091)
-                  ;; (pi .?customfield_12191)
-                  ;; (pi .?customfield_12292)
-                  ;; (pi .?customfield_12499)
-                  ;; (pi .?customfield_12991)
-                  ;; (pi .?customfield_14813)
-                  ;; (pi .?customfield_16692)
-                  ;; (pi .?issuerestriction)
-                  ;; (pi .?issuetype)
-                  ;; (pi .?priority)
-                  ;; (pi .?progress)
-                  ;; (pi .?project)
-                  ;; (pi .?reporter)
-                  ;; (pi .?security)
-                  ;; (pi .?status)
-                  ;; (pi .?timetracking)
-                  ;; (pi .?votes)
-                  ;; (pi .?watches)
-                  ;; (pi .?worklog)
-                  ;; (pi .?aggregateprogress)
                   (displayln "** Summary: " .summary)
                   (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
                   (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
@@ -576,7 +555,7 @@
                       (set! users (cons user users))))
                   (lp (+ offset 1000))))))
           (write-obj-to-file user-list users))))
-      users))
+    users))
 
 (def (dump-users-yaml users)
   " Write out the users hash to ~/.jira-users.yaml "
@@ -587,6 +566,18 @@
      (yaml-dump user-list users)
      (catch (e)
        (raise e)))))
+
+(def (configuration)
+  "Return the configuration of the Jira server"
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/2/configuration" .url))
+          (outs [[ "Id" "Key" "Name" "Type" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (table? body)
+          (let-hash body
+            (pi .?timeTrackingConfiguration)))))))
 
 (def (projects)
   (let-hash (load-config)
