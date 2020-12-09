@@ -392,7 +392,8 @@
 (def (assign issue user)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
-          (data (hash ("accountId" user))))
+          (id (name-to-id user))
+          (data (hash ("accountId" id))))
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -416,14 +417,12 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (when
-            (table? body)
+        (when (table? body)
           (let-hash body
             (when (and .?fields
                        (table? .fields))
               (begin
                 (dp (pi .fields))
-
                 (let-hash .fields
                   (displayln "** Summary: " .summary)
                   (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
@@ -506,30 +505,29 @@
         (for (user users)
           (unless (table? user)
             (error "user is not a table, but a " (type-of user)))
-          (when (table? user)
-            (let-hash user
-              (set! outs
-                (cons
-                 (filter-row-hash
-                  (hash
-                   ("displayName" .?displayName)
-                   ("emailAddress" (if .?emailAddress
-                                     .emailAddress
-                                     "None"))
-                   ("accountId" (if .?accountId
-                                  .accountId
-                                  "None"))
-                   ("active" (if .?active
-                               "Active"
-                               "Inactive"))
-                   ("timeZone" (if .?timeZone
-                                 .timeZone
-                                 "N/A"))
-                   ("accountType" (if .?accountType
-                                    .accountType
-                                    "N/A"))
-                   ("url" .?self)
-                   ) headers) outs))))))
+          (let-hash user
+            (set! outs
+              (cons
+               (filter-row-hash
+                (hash
+                 ("displayName" .?displayName)
+                 ("emailAddress" (if .?emailAddress
+                                   .emailAddress
+                                   "None"))
+                 ("accountId" (if .?accountId
+                                .accountId
+                                "None"))
+                 ("active" (if .?active
+                             "Active"
+                             "Inactive"))
+                 ("timeZone" (if .?timeZone
+                               .timeZone
+                               "N/A"))
+                 ("accountType" (if .?accountType
+                                  .accountType
+                                  "N/A"))
+                 ("url" .?self))
+                headers) outs)))))
       (style-output outs "org-mode"))))
 
 (def (users-hash)
@@ -537,9 +535,7 @@
   (let ((user-list "~/.jira-users")
         (users []))
     (if (modified-since? user-list (* 90 24 3600))
-      (begin
-        (displayln "using cache. yay!")
-        (set! users (read-obj-from-file user-list)))
+      (set! users (read-obj-from-file user-list))
       (begin
         (let-hash (load-config)
           (let ((url (format "~a/rest/api/2/users" .url)))
@@ -652,6 +648,23 @@
                       (bsd "xdg-open")))
            (job (format "~a ~a/browse/~a" command .url issue)))
       (displayln (shell-command job)))))
+
+(def (id-to-name id)
+  "Return the username associated with id"
+  id)
+
+(def (name-to-id name)
+  "Return the accountid associated with username"
+  (let ((users (users-hash))
+        (id 0))
+    (for (user users)
+      (let-hash user
+        (when .?emailAddress
+          (let ((short (car (pregexp-split "@" .?emailAddress))))
+            (when (and short
+                     (string=? short name))
+              (set! id .accountId))))))
+    id))
 
 (def (convert-names str)
   (let ((results ""))
