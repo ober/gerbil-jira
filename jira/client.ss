@@ -391,9 +391,9 @@
 
 (def (assign issue user)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
-          (id (name-to-id user))
-          (data (hash ("accountId" id))))
+    (let* ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
+           (id (name-to-id user))
+           (data (hash ("accountId" id))))
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
