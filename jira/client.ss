@@ -20,7 +20,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.13")
+(def version "0.14")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -143,17 +143,6 @@
             (let-hash watcher
               (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
       (style-output out .style))))
-
-(def (accound-id-for user)
-  " Return account id for user"
-
-
-  )
-
-(def (user-for-accountid id)
-  " Return the username for an account id "
-
-  )
 
 (def (issuetype type)
   (let-hash (load-config)
@@ -367,9 +356,9 @@
                          ("updated" (when .?updated (date->custom .updated)))
                          ("labels" .?labels)
                          ("status" (when (table? .?status) (hash-ref .status 'name)))
-                         ("assignee" (when (table? .?assignee) (let-hash .assignee (car (pregexp-split "@" .?emailAddress)))))
-                         ("creator" (when (table? .?creator) (let-hash .creator (car (pregexp-split "@" .?emailAddress)))))
-                         ("reporter" (when (table? .?reporter) (let-hash .reporter (car (pregexp-split "@" .?emailAddress)))))
+                         ("assignee" (when (table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
+                         ("creator" (when (table? .?creator) (let-hash .creator (email-short .?emailAddress))))
+                         ("reporter" (when (table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
                          ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
                          ("project" (when (table? .?project) (let-hash .project .?name)))
                          ("watchers" (hash-ref .watches 'watchCount))
@@ -377,6 +366,13 @@
               (when (> .?total (+ .startAt .maxResults))
                 (lp (+ .startAt .maxResults)))))))
       (style-output outs "org-mode"))))
+
+(def (email-short email)
+  "Return the username left of the @"
+  (if (and email
+           (string-contains email "@"))
+    (car (pregexp-split "@" email))
+    email))
 
 (def (comment issue comment)
   (let-hash (load-config)
