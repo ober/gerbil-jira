@@ -50,6 +50,7 @@
    ("parse-metas" (hash (description: "Setup your user and password in the config encrypted") (usage: "config") (count: 0)))
    ("create-issue" (hash (description: "create new jira issue") (usage: "create <project> <summary> <description>") (count: 3)))
    ("create" (hash (description: "create new jira issue") (usage: "create <project> <summary> <description>") (count: 3)))
+;;   ("configuration" (hash (description: "configuration") (usage: "configuration") (count: 0)))
    ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
    ("get-issuetype-id" (hash (description: "Get Jira issuetype id from name") (usage: "get-issuetype-id <issuetype name>") (count: 1)))

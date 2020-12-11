@@ -14,6 +14,7 @@
     (display (format "fail: got:-> ~a~% expected:-> ~a~%" got expect))))
 
 (def (jira-tests)
+  (jira-test "email-short:" (email-short "me@example.com") "me")
   (jira-test "convert-name: middle" (convert-names "This is a test for @janedoe to confluence") "This is a test for [~janedoe] to confluence")
   (jira-test "convert-name: beginning" (convert-names "@janedoe this is a test for confluence") "[~janedoe] this is a test for confluence"))
 

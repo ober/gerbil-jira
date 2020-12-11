@@ -2,6 +2,21 @@
 url: https://jira.example.com:8443
 user: myuser
 style: org-mode
+company: example.com
+
+search-fields:
+  - key
+  - summary
+  - assignee
+  - creator
+  - issuetype
+  - labels
+  - priority
+  - project
+  - reporter
+  - status
+  - updated
+  - url
 
 queries:
   myopen: "assignee = currentUser() AND status != Closed order by status DESC"
