@@ -418,7 +418,6 @@
             (when (and .?fields
                        (table? .fields))
               (begin
-                (dp (pi .fields))
                 (let-hash .fields
                   (displayln "** Summary: " .summary)
                   (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
