@@ -20,16 +20,15 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.15")
+(def version "0.16")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
 (import (rename-in :gerbil/gambit/os (time mytime)))
 (def program-name "jira")
 
-(def good-ips (hash))
-(def user-to-id (hash))
-(def id-to-user (hash))
+(def user-to-id #f)
+(def id-to-user #f)
 
 (def (load-config)
   (let ((config (hash)))
@@ -377,7 +376,7 @@
 (def (comment issue comment)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/comment" .url issue))
-           (fixed-comment (convert-names comment))
+           (fixed-comment (convert-users-to-ids comment))
            (data (hash
                   ("body" fixed-comment))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
@@ -424,7 +423,7 @@
                   (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
                   (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
                   (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
-                  (displayln "** Description: " .?description)
+                  (displayln "** Description: " (convert-ids-to-users .?description))
                   (displayln "** Summary: " .?summary)
                   (displayln "** Last Viewed: " .?lastViewed)
                   (displayln "** Created: " .?created)
@@ -450,7 +449,7 @@
                       (let-hash comment
                         (let-hash .author
                           (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
-                        (displayln (pregexp-replace* "*" .body "@")))))
+                        (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
                   (if (table? .?assignee)
                     (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
                     (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee))))
@@ -644,22 +643,51 @@
            (job (format "~a ~a/browse/~a" command .url issue)))
       (displayln (shell-command job)))))
 
-(def (id-to-name id)
-  "Return the username associated with id"
-  id)
-
 (def (name-to-id name)
   "Return the accountid associated with username"
   (let ((users (users-hash))
-        (id 0))
+        (id #f))
     (for (user users)
-      (let-hash user
-        (when .?emailAddress
-          (let ((short (car (pregexp-split "@" .?emailAddress))))
-            (when (and short
-                     (string=? short name))
-              (set! id .accountId))))))
+      (unless id
+        (let-hash user
+          (when .?emailAddress
+            (let ((short (car (pregexp-split "@" .?emailAddress))))
+              (when (and short
+                         (string=? short name))
+                (set! id .accountId)))))))
     id))
+
+(def (make-user-to-id-hash)
+  "Make users hash and set global user-to-id"
+  (unless user-to-id
+    (set! user-to-id (hash))
+    (set! id-to-user (hash))
+    (let ((users (users-hash)))
+      (for (user users)
+        (let-hash user
+          (let ((short (email-short .?emailAddress)))
+            (hash-put! user-to-id short .?accountId)
+            (hash-put! id-to-user .?accountId short)))))))
+
+(def (convert-ids-to-users str)
+  (unless (and
+            id-to-user
+            user-to-id)
+    (make-user-to-id-hash))
+  (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
+        (delim "accountid:")
+        (fmt " @~a"))
+    (hash-interpol re delim str id-to-user fmt)))
+
+(def (convert-users-to-ids str)
+  (unless (and
+            id-to-user
+            user-to-id)
+    (make-user-to-id-hash))
+  (let ((re "(?:^|\\s)@([a-zA-Z0-9]*)")
+        (delim "@")
+        (fmt " [~~accountid:~a]"))
+    (hash-interpol re delim str user-to-id fmt)))
 
 (def (convert-names str)
   (let ((results ""))
