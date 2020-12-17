@@ -125,7 +125,7 @@
 (def (watcher-add issue name)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue)))
-      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string name)))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (convert-users-to-ids name))))
         (unless status
           (error body))
         (present-item body)))))
@@ -661,13 +661,13 @@
   "Make users hash and set global user-to-id"
   (unless user-to-id
     (set! user-to-id (hash))
-    (set! id-to-user (hash))
-    (let ((users (users-hash)))
-      (for (user users)
-        (let-hash user
-          (let ((short (email-short .?emailAddress)))
-            (hash-put! user-to-id short .?accountId)
-            (hash-put! id-to-user .?accountId short)))))))
+    (set! id-to-user (hash)))
+  (let ((users (users-hash)))
+    (for (user users)
+      (let-hash user
+        (let ((short (email-short .?emailAddress)))
+          (hash-put! user-to-id short .?accountId)
+          (hash-put! id-to-user .?accountId short))))))
 
 (def (convert-ids-to-users str)
   (unless (and
