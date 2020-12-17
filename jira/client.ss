@@ -120,7 +120,8 @@
 
 (def (watcher-delete issue name)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/watchers?username=~a" .url issue name)))
+    (make-user-to-id-hash)
+    (let ((url (format "~a/rest/api/2/issue/~a/watchers?accountId=~a" .url issue (hash-get user-to-id name))))
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (present-item body)))))
 
@@ -136,7 +137,7 @@
 
 (def (watchers issue)
   (let-hash (load-config)
-    (let ((out [[ "Name" "Full Name" "Email" "Active?" ]])
+    (let ((out [[ "Name" "Email" "Active? " ]])
           (url (format "~a/rest/api/2/issue/~a/watchers" .url issue)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -144,7 +145,7 @@
         (let-hash body
           (for (watcher .watchers)
             (let-hash watcher
-              (set! out (cons [ .?name .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
+              (set! out (cons [ .?displayName .?emailAddress (if .active "Yes" "No") ] out))))))
       (style-output out .style))))
 
 (def (issuetype type)
