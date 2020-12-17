@@ -124,8 +124,10 @@
 
 (def (watcher-add issue name)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue)))
-      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (convert-users-to-ids name))))
+    (make-user-to-id-hash)
+    (let ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue))
+          (add (hash-get user-to-id name)))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string add)))
         (unless status
           (error body))
         (present-item body)))))
