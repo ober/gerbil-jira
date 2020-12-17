@@ -20,7 +20,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.16")
+(def version "0.17")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -284,21 +284,46 @@
                 (set! id .id))))
           id)))))
 
-(def (parse-metas)
+(def (metas)
   (let-hash (load-config)
-    (let ((metas (createmetas .project-key .basic-auth .url)))
+    (let ((metas (createmetas .project-key .basic-auth .url))
+          (outs [[ "Id" "Name"  "Untranslated Name" "Description" "Subtask" "Icon Url" "Url" ]]))
       (let-hash metas
         (let-hash (car .projects)
           (for (its .issuetypes)
-            (displayln (hash->list its))))))))
+            (when (table? its)
+              (let-hash its
+                (set! outs (cons [ .?id
+                                   .?name
+                                   .?untranslatedName
+                                   .?description
+                                   (yon .?subtask)
+                                   .?iconUrl
+                                   .?self ] outs)))))))
+      (style-output outs .style))))
 
 (def (fields)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/field" .url)))
+    (let ((url (format "~a/rest/api/2/field" .url))
+          (outs [[ "Id" "Name" "Key" "Schema" "Clause Names" "Custom?" "Long Name" "navigable?" "Searchable?" "Orderable?" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (list? body)
+          (for (field body)
+            (when (table? field)
+              (let-hash field
+                (set! outs (cons [ .?id
+                                   .?name
+                                   .?key
+                                   (json-object->string .?schema)
+                                   (if (list? .?clauseNames) (string-join .?clauseNames ",") .?clauseNames)
+                                   (yon .?custom)
+                                   .?untranslatedName
+                                   .?navigable
+                                   .?searchable
+                                   .?orderable ] outs)))))))
+        (style-output outs .style))))
 
 (def (editmeta issue)
   (let-hash (load-config)
@@ -428,6 +453,7 @@
                   (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
                   (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
                   (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
+                  (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
                   (displayln "** Description: " (convert-ids-to-users .?description))
                   (displayln "** Summary: " .?summary)
                   (displayln "** Last Viewed: " .?lastViewed)
