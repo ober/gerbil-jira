@@ -51,7 +51,7 @@
    ("fields" (hash (description: "Return all fields") (usage: "fields") (count: 0)))
    ("filters" (hash (description: "Get all search filters") (usage: "filters") (count: 0)))
 ;;   ("get-issuetype-id" (hash (description: "Get Jira issuetype id from name") (usage: "get-issuetype-id <issuetype name>") (count: 1)))
-   ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
+;;   ("gettoken" (hash (description: "Get Jira TokenVerify account credentials") (usage: "gettoken") (count: 0)))
 ;; ("index-summary" (hash (description: "Get Index Summary Details") (usage: "index-summary") (count: 0)))
    ("issue" (hash (description: "Get Jira issue details") (usage: "issue <issue id>") (count: 1)))
 ;;   ("issuetype" (hash (description: "Get information on issuetype") (usage: "issuetype <issuetype id>") (count: 1)))
