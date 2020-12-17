@@ -589,19 +589,18 @@
 
 (def (properties issue)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/properties" .url issue)))
+    (let ((url (format "~a/rest/api/3/issue/~a/properties" .url (string-upcase issue))))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
-
-(def (property issue)
-  (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/properties/sd.initial.field.set" .url issue)))
-      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
-        (unless status
-          (error body))
-        (present-item body)))))
+        (when (table? body)
+          (let-hash body
+            (when .?keys
+              (when (list? .keys)
+                (for (property .keys)
+                  (when (table? property)
+                    (let-hash property
+                      (displayln .?key " " .?self))))))))))))
 
 (def (get-new-ip uri host)
   (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
