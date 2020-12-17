@@ -72,7 +72,9 @@
       (with ([status body] results)
         (unless status
           (error body))
-        (present-item body)))))
+        (when (list? body)
+          (for (filter body)
+            (pi filter)))))))
 
 (def (transitions issue)
   (let-hash (load-config)
