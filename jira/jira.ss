@@ -70,7 +70,7 @@
    ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
    ("users" (hash (description: "Get list of users.") (usage: "users") (count: 0)))
    ("watcher-add" (hash (description: "Get Watchers on issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
-   ("watcher-delete" (hash (description: "Get Watchers on issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
+   ("watcher-del" (hash (description: "Remove a person from the Watcher list for issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
    ("watchers" (hash (description: "Get Watchers on issue") (usage: "watchers <issue id>") (count: 1)))
 ;;   ("configuration" (hash (description: "configuration") (usage: "configuration") (count: 0)))
     ))
