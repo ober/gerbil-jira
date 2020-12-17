@@ -118,7 +118,7 @@
           (error body))
         (present-item body)))))
 
-(def (watcher-delete issue name)
+(def (watcher-del issue name)
   (let-hash (load-config)
     (make-user-to-id-hash)
     (let ((url (format "~a/rest/api/2/issue/~a/watchers?accountId=~a" .url issue (hash-get user-to-id name))))
