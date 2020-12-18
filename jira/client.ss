@@ -345,6 +345,18 @@
           (error body))
         (present-item body)))))
 
+(def (update-custom-field issue field content)
+  (let-hash (load-config)
+    (let* ((data (hash))
+           (fields (hash))
+           (url (format "~a/rest/api/2/issue/~a" .url issue)))
+      (hash-put! fields field content)
+      (hash-put! data "fields" fields)
+      (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
