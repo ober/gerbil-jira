@@ -345,7 +345,7 @@
           (error body))
         (present-item body)))))
 
-(def (update-custom-field issue field content)
+(def (update-field issue field content)
   (let-hash (load-config)
     (let* ((data (hash))
            (fields (hash))
@@ -376,7 +376,7 @@
                       sf
                       df)))
       (let lp ((offset 0))
-        (with ([ status body ] (rest-call 'post (format "~a?startAt=~a&maxResults=200" url offset) (default-headers .basic-auth) (json-object->string data)))
+        (with ([ status body ] (rest-call 'post (format "~a?startAt=~a&maxResults=50" url offset) (default-headers .basic-auth) (json-object->string data)))
           (unless status
             (error body))
           (if (table? body)
@@ -404,8 +404,8 @@
                          ("project" (when (table? .?project) (let-hash .project .?name)))
                          ("watchers" (hash-ref .watches 'watchCount))
                          ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-              (when (> .?total (+ .startAt .maxResults))
-                (lp (+ .startAt .maxResults)))))))
+              (when (> .?total (+ offset .maxResults))
+                (lp (+ offset .maxResults)))))))
       (style-output outs "org-mode"))))
 
 (def (email-short email)
