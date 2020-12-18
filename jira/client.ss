@@ -20,7 +20,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.18")
+(def version "0.19")
 
 (def config-file "~/.jira.yaml")
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
@@ -323,7 +323,7 @@
                                    (yon .?navigable)
                                    (yon .?searchable)
                                    (yon .?orderable) ] outs)))))))
-        (style-output outs .style))))
+      (style-output outs .style))))
 
 (def (editmeta issue)
   (let-hash (load-config)
@@ -406,10 +406,9 @@
                            ("project" (when (table? .?project) (let-hash .project .?name)))
                            ("watchers" (hash-ref .watches 'watchCount))
                            ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-                (displayln "startAt: " .startAt " total: " .total " offset: " offset " MaxResults: " .maxResults)
                 (when (> .?total (+ offset .maxResults))
                   (lp (+ offset .maxResults))))))))
-        (style-output outs "org-mode"))))
+      (style-output outs "org-mode"))))
 
 (def (email-short email)
   "Return the username left of the @"
