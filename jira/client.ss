@@ -368,45 +368,48 @@
               (format "~a" query)
               (format "text ~~ '~a'" query)))
            (url (format "~a/rest/api/2/search" .?url))
-           (data (hash
-                  ("jql" query)))
            (headers (if (and sf
                              (list? sf)
                              (length>n? sf 1))
                       sf
                       df)))
       (let lp ((offset 0))
-        (with ([ status body ] (rest-call 'post (format "~a?startAt=~a&maxResults=50" url offset) (default-headers .basic-auth) (json-object->string data)))
-          (unless status
-            (error body))
-          (if (table? body)
-            (let-hash body
-              (set! outs (cons headers outs))
-              (for (issue .issues)
-                (let-hash issue
-                  (dp (hash->list .fields))
-                  (let-hash .fields
-                    (set! outs
-                      (cons
-                       (filter-row-hash
-                        (hash
-                         ("key" ..key)
-                         ("description" .?description)
-                         ("summary" .?summary)
-                         ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
-                         ("updated" (when .?updated (date->custom .updated)))
-                         ("labels" .?labels)
-                         ("status" (when (table? .?status) (hash-ref .status 'name)))
-                         ("assignee" (when (table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
-                         ("creator" (when (table? .?creator) (let-hash .creator (email-short .?emailAddress))))
-                         ("reporter" (when (table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
-                         ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
-                         ("project" (when (table? .?project) (let-hash .project .?name)))
-                         ("watchers" (hash-ref .watches 'watchCount))
-                         ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-              (when (> .?total (+ offset .maxResults))
-                (lp (+ offset .maxResults)))))))
-      (style-output outs "org-mode"))))
+        (let ((data (hash
+                     ("maxResults" 100)
+                     ("startAt" offset)
+                     ("jql" query))))
+          (with ([ status body ] (rest-call 'post (format "~a?startAt=~a" url offset) (default-headers .basic-auth) (json-object->string data)))
+            (unless status
+              (error body))
+            (if (table? body)
+              (let-hash body
+                (set! outs (cons headers outs))
+                (for (iss .issues)
+                  (let-hash iss
+                    (dp (hash->list .fields))
+                    (let-hash .fields
+                      (set! outs
+                        (cons
+                         (filter-row-hash
+                          (hash
+                           ("key" ..key)
+                           ("description" .?description)
+                           ("summary" .?summary)
+                           ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
+                           ("updated" (when .?updated (date->custom .updated)))
+                           ("labels" .?labels)
+                           ("status" (when (table? .?status) (hash-ref .status 'name)))
+                           ("assignee" (when (table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
+                           ("creator" (when (table? .?creator) (let-hash .creator (email-short .?emailAddress))))
+                           ("reporter" (when (table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
+                           ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
+                           ("project" (when (table? .?project) (let-hash .project .?name)))
+                           ("watchers" (hash-ref .watches 'watchCount))
+                           ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
+                (displayln "startAt: " .startAt " total: " .total " offset: " offset " MaxResults: " .maxResults)
+                (when (> .?total (+ offset .maxResults))
+                  (lp (+ offset .maxResults))))))))
+        (style-output outs "org-mode"))))
 
 (def (email-short email)
   "Return the username left of the @"
