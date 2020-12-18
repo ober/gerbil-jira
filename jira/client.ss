@@ -157,14 +157,14 @@
         (present-item body)))))
 
 (def (create-issue project summary issuetype assignee priority labels originalestimate description duedate parent)
-  (displayln "project: " project " sum: " summary " issuetype: " issuetype " assignee: " assignee " priority: " priority " labels: " labels " estimate: " originalestimate " description: " description " duedate: " duedate " parent: " parent)
+  (make-user-to-id-hash)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue" .url))
            (fields (hash
                     ("project" (hash ("id" project)))
                     ("summary" summary)
                     ("issuetype" (hash ("id" issuetype)))
-                    ("assignee" (hash ("name" assignee)))
+                    ("assignee" (hash ("accountId" (hash-get user-to-id assignee))))
                     ;;	    ("components" [ (hash ("name" component)) ])
                     ("priority" (hash ("name" priority)))
                     ("labels" [])
