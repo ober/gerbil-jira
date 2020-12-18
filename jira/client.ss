@@ -322,7 +322,7 @@
                                    .?untranslatedName
                                    (yon .?navigable)
                                    (yon .?searchable)
-                                   (yo .?orderable) ] outs)))))))
+                                   (yon .?orderable) ] outs)))))))
         (style-output outs .style))))
 
 (def (editmeta issue)
