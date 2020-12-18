@@ -463,6 +463,14 @@
                   (let-hash .project (displayln "** Project: " .?name))
                   (let-hash .watches (displayln "** Watch Count: " .?watchCount))
                   (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
+                  (when ...?custom-fields
+                    (hash-for-each
+                     (lambda (k v)
+                       (let ((val (hash-get ..fields (string->symbol k))))
+                         (when val
+                           (displayln "** " v)
+                           (displayln val))))
+                     ...?custom-fields))
                   (displayln "** Subtasks: ")
                   (when .?subtasks
                     (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
@@ -559,7 +567,7 @@
   "Fetch users, or read from local cache"
   (let ((user-list "~/.jira-users")
         (users []))
-    (if (modified-since? user-list (* 90 24 3600))
+    (if (modified-since? user-list (* 12 24 3600))
       (set! users (read-obj-from-file user-list))
       (begin
         (let-hash (load-config)
