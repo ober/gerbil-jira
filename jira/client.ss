@@ -438,6 +438,7 @@
 
 (def (issue id)
   (let-hash (load-config)
+    (make-user-to-id-hash)
     (let ((url (format "~a/rest/api/2/issue/~a" .url id)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -708,14 +709,15 @@
           (hash-put! id-to-user .?accountId short))))))
 
 (def (convert-ids-to-users str)
-  (unless (and
-            id-to-user
-            user-to-id)
-    (make-user-to-id-hash))
-  (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
-        (delim "accountid:")
-        (fmt " @~a"))
-    (hash-interpol re delim str id-to-user fmt)))
+  (when (string? str)
+    (unless (and
+              id-to-user
+              user-to-id)
+      (make-user-to-id-hash))
+    (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
+          (delim "accountid:")
+          (fmt " @~a"))
+      (hash-interpol re delim str id-to-user fmt))))
 
 (def (convert-users-to-ids str)
   (unless (and
