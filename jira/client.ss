@@ -320,9 +320,9 @@
                                    (if (list? .?clauseNames) (string-join .?clauseNames ",") .?clauseNames)
                                    (yon .?custom)
                                    .?untranslatedName
-                                   .?navigable
-                                   .?searchable
-                                   .?orderable ] outs)))))))
+                                   (yor .?navigable)
+                                   (yor .?searchable)
+                                   (yor .?orderable) ] outs)))))))
         (style-output outs .style))))
 
 (def (editmeta issue)
