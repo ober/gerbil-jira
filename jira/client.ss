@@ -450,64 +450,69 @@
             (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
         (style-output outs .style)))))
 
+
+(def (issue-parse issue)
+  " Given the content of an issue, parse it and display appropriately"
+  (make-user-to-id-hash)
+  (let-hash (load-config)
+    (when (table? issue)
+      (let-hash issue
+        (when (and .?fields
+                   (table? .fields))
+          (begin
+            (let-hash .fields
+              (displayln "** Summary: " .summary)
+              (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
+              (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
+              (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
+              (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
+              (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
+              (displayln "** Description: " (convert-ids-to-users .?description))
+              (displayln "** Summary: " .?summary)
+              (displayln "** Last Viewed: " .?lastViewed)
+              (displayln "** Created: " .?created)
+              (let-hash .status (displayln "** Status: " .?name))
+              (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
+              (let-hash .project (displayln "** Project: " .?name))
+              (let-hash .watches (displayln "** Watch Count: " .?watchCount))
+              (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
+              (when ...?custom-fields
+                (hash-for-each
+                 (lambda (k v)
+                   (let ((val (hash-get ..fields (string->symbol k))))
+                     (when val
+                       (displayln "** " v)
+                       (displayln val))))
+                 ...?custom-fields))
+              (displayln "** Subtasks: ")
+              (when .?subtasks
+                (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
+                  (for (subtask .subtasks)
+                    (let-hash subtask
+                      (let-hash .fields
+                        (let ((pri (if (table? .?priority)
+                                     (hash-get .?priority 'name)
+                                     "N/A")))
+                          (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
+                  (style-output outs (or .?style "org-mode"))))
+              (displayln "** Comments: ")
+              (let-hash .comment
+                (for (comment .comments)
+                  (let-hash comment
+                    (let-hash .author
+                      (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
+                    (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
+              (if (table? .?assignee)
+                (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
+                (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee)))))))))))
+
 (def (issue id)
   (let-hash (load-config)
-    (make-user-to-id-hash)
     (let ((url (format "~a/rest/api/2/issue/~a" .url id)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (when (table? body)
-          (let-hash body
-            (when (and .?fields
-                       (table? .fields))
-              (begin
-                (let-hash .fields
-                  (displayln "** Summary: " .summary)
-                  (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
-                  (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
-                  (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
-                  (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
-                  (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
-                  (displayln "** Description: " (convert-ids-to-users .?description))
-                  (displayln "** Summary: " .?summary)
-                  (displayln "** Last Viewed: " .?lastViewed)
-                  (displayln "** Created: " .?created)
-                  (let-hash .status (displayln "** Status: " .?name))
-                  (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
-                  (let-hash .project (displayln "** Project: " .?name))
-                  (let-hash .watches (displayln "** Watch Count: " .?watchCount))
-                  (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
-                  (when ...?custom-fields
-                    (hash-for-each
-                     (lambda (k v)
-                       (let ((val (hash-get ..fields (string->symbol k))))
-                         (when val
-                           (displayln "** " v)
-                           (displayln val))))
-                     ...?custom-fields))
-                  (displayln "** Subtasks: ")
-                  (when .?subtasks
-                    (let ((outs [[ "Id" "Summary" "Status" "Priority" ]]))
-                      (for (subtask .subtasks)
-                        (let-hash subtask
-                          (let-hash .fields
-                            (let ((pri (if (table? .?priority)
-                                         (hash-get .?priority 'name)
-                                         "N/A")))
-                              (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
-                      (style-output outs (or .?style "org-mode"))))
-                  (displayln "** Comments: ")
-                  (let-hash .comment
-                    (for (comment .comments)
-                      (let-hash comment
-                        (let-hash .author
-                          (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
-                        (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
-                  (if (table? .?assignee)
-                    (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
-                    (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee))))
-                  )))))))))
+        (issue-parse body)))))
 
 (def (priorities)
   (let-hash (load-config)
@@ -729,9 +734,10 @@
               user-to-id)
       (make-user-to-id-hash))
     (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
-          (delim "accountid:")
-          (fmt " @~a"))
-      (hash-interpol re delim str id-to-user fmt))))
+          (delim "~accountid: ")
+          (fmt " @~a")
+          (fstr (pregexp-replace* "\\]\\[" str "] [")))
+      (hash-interpol re delim fstr id-to-user fmt))))
 
 (def (convert-users-to-ids str)
   (unless (and
