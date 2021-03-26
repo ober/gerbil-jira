@@ -1,12 +1,34 @@
-.PHONY: test tests
-docker:
-	docker build --rm=true -t jira .
-	docker tag jira jaimef/jira
+PROJECT := jira
+$(eval uid := $(shell id -u))
+$(eval gid := $(shell id -g))
 
-push:
-	docker push jaimef/jira
+default: linux-static-docker
 
-tests: test
+deps:
+	$(GERBIL_HOME)/bin/gxpkg install github.com/ober/oberlib
+	$(GERBIL_HOME)/bin/gxpkg install github.com/yanndegat/colorstring
 
-test:
-	@./test/test.ss
+build: deps
+	$(GERBIL_HOME)/bin/gxpkg link $(PROJECT) /src || true
+	$(GERBIL_HOME)/bin/gxpkg build $(PROJECT)
+
+linux-static-docker:
+	docker run -it \
+	-e GERBIL_PATH=/tmp/.gerbil \
+	-u "$(uid):$(gid)" \
+	-v $(PWD):/src \
+	jaimef/alpine-current:static \
+	make -C /src linux-static
+
+linux-static: build
+	$(GERBIL_HOME)/bin/gxc -o $(PROJECT)-bin -static \
+	-cc-options "-Bstatic" \
+	-static \
+	-ld-options "-static -lpthread -L/usr/lib64 -lssl -ldl -lyaml -lz" \
+	-exe $(PROJECT)/$(PROJECT).ss
+
+clean:
+	rm -Rf $(PROJECT)-bin
+
+install:
+	mv $(PROJECT)-bin /usr/local/bin/$(PROJECT)
