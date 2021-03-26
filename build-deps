@@ -1,7 +1,8 @@
 (gerbil-build-deps-v2:
  (ober/jira/client
   "jira/client"
-  (gerbil/core
+  (colorstring/colorstring
+   gerbil/core
    gerbil/gambit
    gerbil/gambit/os
    ober/oberlib
@@ -17,13 +18,12 @@
    std/text/json
    std/text/yaml))
  (ober/jira/jira
-  (exe:
+  (static-exe:
    "jira/jira"
    "-ld-options"
-   "-lyaml -lssl -lz -L/usr/local/opt/openssl/lib/ -L/usr/local/lib"
-   "-cc-options"
-   "-I/usr/local/opt/openssl/include -I/usr/local/include")
-  (gerbil/core
+   "-lpthread -lyaml -ldl -lssl -lz -L/usr/lib64")
+  (colorstring/colorstring
+   gerbil/core
    gerbil/gambit
    gerbil/gambit/ports
    ober/jira/client
