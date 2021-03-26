@@ -14,6 +14,7 @@
   :std/sugar
   :std/text/base64
   :std/text/json
+  :colorstring/colorstring
   :std/text/yaml
   :ober/oberlib)
 
@@ -91,8 +92,31 @@
                 (set! outs (cons [ ..id ..name .name .description ] outs))))))
         (style-output outs .style)))))
 
+(def (transitions-fields issue)
+  (let-hash (load-config)
+    (let* ((outs [["id" "name" "toname" "tostate"]])
+	   (url (format "~a/rest/api/2/issue/~a/transitions?expand=transitions.fields" .url issue))
+	   (results (rest-call 'get url (default-headers .basic-auth))))
+      (with ([status body] results)
+        (unless status
+          (error body))
+        (let-hash body
+          (for (transition .transitions)
+            (let-hash transition
+              (hash-for-each
+               (lambda (k v)
+                 (pi v)
+                 ) .fields))))))))
+
 (def (createmetas project basic-auth url)
   (let (url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a" url project))
+    (with ([status body] (rest-call 'get url (default-headers basic-auth)))
+      (unless status
+        (error body))
+      body)))
+
+(def (issuemetas basic-auth url)
+  (let (url (format "~a/rest/api/2/issue/createmeta" url))
     (with ([status body] (rest-call 'get url (default-headers basic-auth)))
       (unless status
         (error body))
@@ -107,12 +131,23 @@
           (error body))
         (present-item body)))))
 
-(def (transition-comment issue trans comment)
+(def (transition-with-field issue trans field value)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
 	   (data (hash
-                  ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
+                  ("update" (hash (field [ (hash ("add" (hash ("comment" value)))) ])))
 		  ("transition" (hash ("id" trans))))))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (transition-comment issue trans comment)
+  (let-hash (load-config)
+    (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+           (data (hash
+                  ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
+        	  ("transition" (hash ("id" trans))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -167,6 +202,9 @@
                     ("assignee" (hash ("accountId" (hash-get user-to-id assignee))))
                     ;;	    ("components" [ (hash ("name" component)) ])
                     ("priority" (hash ("name" priority)))
+                    ("customfield_17245" (hash ("id" 1)))
+                    ("customfield_15014" (hash ("id" 1)))
+;;                    ("environment" "prod")
                     ("labels" [])
                     ("timetracking" (hash
                                      ("originalEstimate" originalestimate)))
@@ -206,8 +244,6 @@
      (summary (interpol-from-env (hash-get template "summary"))))))
 
 (def (execute-template template metas project parent)
-  (displayln "metas: " (type-of metas))
-  (displayln "project: " (type-of project))
   (if (not (table? template))
     (begin
       (displayln "Error: execute-template passed non-table :"  template)
@@ -238,9 +274,7 @@
         (let ((creature (hash-get .creations creation)))
           (if creature
             (execute-template creature metas .project-key #f)
-            (begin
-              (displayln "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")
-              (exit 2))))
+            (error "Error: could not find an entry for " creation " in your ~/.jira.yaml under the creations block")))
         (displayln "Error: no create templates defined in ~/.jira.yaml under creations")))))
 
 (def (create project summary description)
@@ -289,18 +323,19 @@
     (let ((metas (createmetas .project-key .basic-auth .url))
           (outs [[ "Id" "Name"  "Untranslated Name" "Description" "Subtask" "Icon Url" "Url" ]]))
       (let-hash metas
-        (let-hash (car .projects)
-          (for (its .issuetypes)
-            (when (table? its)
-              (let-hash its
-                (set! outs (cons [ .?id
-                                   .?name
-                                   .?untranslatedName
-                                   .?description
-                                   (yon .?subtask)
-                                   .?iconUrl
-                                   .?self ] outs)))))))
-      (style-output outs .style))))
+        (when (table? .?projects)
+          (let-hash (car .projects)
+            (for (its .issuetypes)
+              (when (table? its)
+                (let-hash its
+                  (set! outs (cons [ .?id
+                                     .?name
+                                     .?untranslatedName
+                                     .?description
+                                     (yon .?subtask)
+                                     .?iconUrl
+                                     .?self ] outs)))))))
+        (style-output outs .style)))))
 
 (def (fields)
   (let-hash (load-config)
@@ -393,8 +428,8 @@
                          (filter-row-hash
                           (hash
                            ("key" ..key)
-                           ("description" .?description)
-                           ("summary" .?summary)
+                           ("description" (when .?description (org-table-safe .description)))
+                           ("summary" (when .?summary (org-table-safe .summary)))
                            ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
                            ("updated" (when .?updated (date->custom .updated)))
                            ("labels" .?labels)
@@ -450,7 +485,6 @@
             (set! outs (cons [ .?name .?emailAddress .?displayName .?active .?timeZone .?self ] outs))))
         (style-output outs .style)))))
 
-
 (def (issue-parse issue)
   " Given the content of an issue, parse it and display appropriately"
   (make-user-to-id-hash)
@@ -468,7 +502,7 @@
               (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
               (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
               (displayln "** Description: " (convert-ids-to-users .?description))
-              (displayln "** Summary: " .?summary)
+              (displayln "** Summary: " (when .?summary .summary))
               (displayln "** Last Viewed: " .?lastViewed)
               (displayln "** Created: " .?created)
               (let-hash .status (displayln "** Status: " .?name))
@@ -481,6 +515,9 @@
                  (lambda (k v)
                    (let ((val (hash-get ..fields (string->symbol k))))
                      (when val
+                       (when (list? val)
+                         (for (v val)
+                           (pi v)))
                        (displayln "** " v)
                        (displayln val))))
                  ...?custom-fields))
@@ -506,6 +543,11 @@
                 (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
                 (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee)))))))))))
 
+(def (org-table-safe str)
+  (if (string? str)
+    (pregexp-replace* "\\|" str "-")
+    str))
+
 (def (issue id)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issue/~a" .url id)))
@@ -529,10 +571,22 @@
 (def (index-summary)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/index/summary" .url)))
-      (with ([status body] (rest-call 'get url default-headers .basic-auth))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
         (present-item body)))))
+
+(def (work issue)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/worklog" .url issue)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+         (when (table? body)
+           (let-hash body
+             (when .?worklogs
+               (for (worklog .worklogs)
+                 (pi worklog)))))))))
 
 (def (members project)
   (let-hash (load-config)
@@ -540,7 +594,7 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (pi body)))))
 
 (def (users)
   (let-hash (load-config)
@@ -734,7 +788,7 @@
               user-to-id)
       (make-user-to-id-hash))
     (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
-          (delim "~accountid: ")
+          (delim "~accountid:")
           (fmt " @~a")
           (fstr (pregexp-replace* "\\]\\[" str "] [")))
       (hash-interpol re delim fstr id-to-user fmt))))
