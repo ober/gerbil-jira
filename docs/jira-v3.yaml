@@ -1,6 +1,6 @@
 ---
 servers:
-- url: 
+- url:
 tags:
 - name: Application roles
   description: This resource represents application roles. Use it to get details of
@@ -9576,7 +9576,7 @@ paths:
           application/json:
             example:
               displayName: Mia Krystof
-              name: 
+              name:
               emailAddress: mia@atlassian.com
               password: abracadabra
             schema:
@@ -17599,7 +17599,7 @@ paths:
         in: query
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: Use [expand](#expansion) to include additional information about
           worklogs in the response. This parameter accepts `properties` that returns
@@ -19684,7 +19684,7 @@ paths:
       summary: Retrieve the number of actors (users and groups) assigned to a particular
         role in a project
       operationId: com.atlassian.jira.rest.v2.issue.project.ProjectRoleResource.getProjectRoleActorsCount_get
-      description: 
+      description:
       deprecated: false
   /rest/api/3/issue/{issueIdOrKey}/assignee:
     put:
@@ -20926,7 +20926,7 @@ paths:
                   content:
                   - content:
                     - type: text
-                      text: Investigation underway
+                      text: Investigation underwayA
                     type: paragraph
                   type: doc
                   version: 1
@@ -20965,7 +20965,7 @@ paths:
                     remainingEstimate: 4d
                     originalEstimate: 1w 1d
                 components:
-                - set: 
+                - set:
                 summary:
                 - set: Bug in business logic
                 labels:
@@ -21379,7 +21379,7 @@ paths:
         in: query
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: Use [expand](#expansion) to include additional information about
           worklogs in the response. This parameter accepts `properties`, which returns
@@ -21473,7 +21473,7 @@ paths:
         in: path
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: 'Use [expand](#expansion) to include additional information about
           work logs in the response. This parameter accepts
@@ -23210,7 +23210,7 @@ paths:
       parameters:
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: Use [expand](#expansion) to include additional information about
           worklogs in the response. This parameter accepts `properties` that returns
@@ -25843,7 +25843,7 @@ paths:
         in: query
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: Use [expand](#expansion) to include additional information about
           work logs in the response. This parameter accepts `properties`, which returns
@@ -25939,7 +25939,7 @@ paths:
         in: query
       - name: expand
         schema:
-          default: 
+          default:
           type: string
         description: Use [expand](#expansion) to include additional information about
           worklogs in the response. This parameter accepts`properties`, which returns

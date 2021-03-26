@@ -33,6 +33,7 @@
   :std/text/yaml
   :std/text/zlib
   :std/xml/ssax
+  :colorstring/colorstring
   :ober/oberlib
   :ober/jira/client)
 
@@ -66,6 +67,7 @@
    ("transitions" (hash (description: "Get list of transitions available for issue") (usage: "transitions <issue name>") (count: 1)))
    ("update-field" (hash (description: "Update a custom field with the new value") (usage: "update-field  <jira issue> <fieldname> <content>") (count: 3)))
    ("users" (hash (description: "Get list of users.") (usage: "users") (count: 0)))
+   ("work" (hash (description: "Get work log for issue.") (usage: "work <issue id>") (count: 1)))
    ("watcher-add" (hash (description: "Get Watchers on issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
    ("watcher-del" (hash (description: "Remove a person from the Watcher list for issue") (usage: "watcher-delete <issue id> <username>") (count: 2)))
    ("watchers" (hash (description: "Get Watchers on issue") (usage: "watchers <issue id>") (count: 1)))
