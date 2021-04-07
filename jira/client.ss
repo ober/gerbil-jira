@@ -413,7 +413,8 @@
                      ("maxResults" 100)
                      ("startAt" offset)
                      ("jql" query))))
-          (with ([ status body ] (rest-call 'post (format "~a?startAt=~a" url offset) (default-headers .basic-auth) (json-object->string data)))
+          (with ([ status body ]
+                 (rest-call 'post (format "~a?startAt=~a" url offset) (default-headers .basic-auth) (json-object->string data) 3))
             (unless status
               (error body))
             (if (table? body)
