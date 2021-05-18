@@ -1,0 +1,350 @@
+** Jira command line Howto
+   Because you have issues, with guis...
+
+*** Updating to use Jira Cloud
+**** Get an Api token
+- Go to https://id.atlassian.com/manage/api-tokens and create an api token.
+**** Update Jira secrets
+- Once you've created an api token on the previous step, we will use it to =replace= your =password= field in the next command.
+#+begin_src sh
+ober|fx|:devops-docs>jira config
+What is your Jira password? (will not echo) :**********
+Add the following lines to your ~/.jira.yaml
+
+secrets: V2UncmUgbm8gc3RyYW5nZXJzIHRvIGxvdmUKWW91IGtub3cgdGhlIHJ1bGVzIGFuZCBzbyBkbyBJCkEgZnVsbCBjb21taXRtZW50J3Mgd2hhdCBJJ20gdGhpbmtpbmcgb2YKWW91IHdvdWxkbnQgZ2V0IHRoaXMgZnJvbSBhbnkgb3RoZXIgZ3V5CkkganVzdCB3YW5uYSB0ZWxsIHlvdSBob3cgSSdtIGZlZWxpbmcKR290dGEgbWFrZSB5b3UgdW5kZXJzdGFuZApOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UKV2UndmUga25vd24gZWFjaCBvdGhlciBmb3Igc28gbG9uZwpZb3VyIGhlYXJ0J3MgYmVlbiBhY2hpbmcKQnV0IHlvdSdyZSB0b28gc2h5IHRvIHNheSBpdApJbnNpZGUgd2UgYm90aCBrbm93IHdoYXQncyBiZWVuIGdvaW5nIG9uCldlIGtub3cgdGhlIGdhbWUgYW5kIHdlJ3JlIGdvbm5hIHBsYXkgaXQKQW5ubm5uZCBpZiB5b3UgYXNrIG1lIGhvdyBJJ20gZmVlbGluZwpEb24ndCB0ZWxsIG1lIHlvdSdyZSB0b28gYmxpbmQgdG8gc2VlCk5ldmVyIGdvbm5hIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGxldCB5b3UgZG93bgpOZXZlciBnb25uYSBydW4gYXJvdW5kIGFuZCBkZXNlcnQgeW91Ck5ldmVyIGdvbm5hIG1ha2UgeW91IGNyeQpOZXZlciBnb25uYSBzYXkgZ29vZGJ5ZQpOZXZlciBnb25uYSB0ZWxsIGEgbGllIGFuZCBodXJ0IHlvdQpOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UKR2l2ZSB5b3UgdXAgZ2l2ZSB5b3UgdXAKR2l2ZSB5b3UgdXAgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgZ2l2ZQpOZXZlciBnb25uYSBnaXZlIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGdpdmUKTmV2ZXIgZ29ubmEgZ2l2ZSBnaXZlIHlvdSB1cApXZSd2ZSBrbm93biBlYWNoIG90aGVyIGZvciBzbyBsb25nCllvdXIgaGVhcnQncyBiZWVuIGFjaGluZwpCdXQgeW91J3JlIHRvbyBzaHkgdG8gc2F5IGl0Ckluc2lkZSB3ZSBib3RoIGtub3cgd2hhdCdzIGJlZW4gZ29pbmcgb24KV2Uga25vdyB0aGUgZ2FtZSBhbmQgd2UncmUgZ29ubmEgcGxheSBpdApJIGp1c3Qgd2FubmEgdGVsbCB5b3UgaG93IEknbSBmZWVsaW5nCkdvdHRhIG1ha2UgeW91IHVuZGVyc3RhbmQKTmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgbGV0IHlvdSBkb3duCk5ldmVyIGdvbm5hIHJ1biBhcm91bmQgYW5kIGRlc2VydCB5b3UKTmV2ZXIgZ29ubmEgbWFrZSB5b3UgY3J5Ck5ldmVyIGdvbm5hIHNheSBnb29kYnllCk5ldmVyIGdvbm5hIHRlbGwgYSBsaWUgYW5kIGh1cnQgeW91Ck5ldmVyIGdvbm5hIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGxldCB5b3UgZG93bgpOZXZlciBnb25uYSBydW4gYXJvdW5kIGFuZCBkZXNlcnQgeW91Ck5ldmVyIGdvbm5hIG1ha2UgeW91IGNyeQpOZXZlciBnb25uYSBzYXkgZ29vZGJ5ZQpOZXZlciBnb25uYSB0ZWxsIGEgbGllIGFuZCBodXJ0IHlvdQpOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UK
+
+#+end_src
+- Copy the above =secrets= line to your =~/.jira.yaml= replacing the previous =secrets= line.
+**** Update your user
+- Your username is now your full email address.
+- Example. I changed =ober= to =ober@linbsd.org=
+**** Change =URL= to point to cloud Jira
+- Replace previous =url= with:
+```yaml
+url: https://linbsd.atlassian.net:443
+```
+
+*** Features
+- Create issues from templates with environmental variables. (think Jenkins jobs for boilerplate issues)
+- Single static binary
+- Credentials stored locally encrypted with aes-256
+- Assign issues
+- Comment on issues
+- Create new issues
+- Use saved searches in your yaml config.
+- Open jira issue in browser
+- Transition issues between states. (e.g. Start, Resolve, Close)
+- Add watchers to issues.
+
+*** Installation
+**** Macos
+     #+BEGIN_SRC sh
+     brew tap ober/brew
+     brew install jira
+     #+END_SRC
+
+*** Configuration
+    - First thing you need to do is create a =~/.jira.yaml=
+**** My configuration
+#+BEGIN_SRC yaml
+---
+url: https://jira.linbsd.org:8443
+user: !!!your-name-here!!!
+style: org-mode
+project: Devops & Co
+project-key: DEVYOPS
+
+search-fields:
+  - key
+  - summary
+  - assignee
+  - creator
+  - issuetype
+  - labels
+  - priority
+  - project
+  - reporter
+  - status
+  - updated
+  - watchers
+  - url
+
+queries:
+  come: 'comments ~ currentUser() order by updated DESC'
+  myopen: "assignee = currentUser() AND status != Closed order by status DESC"
+  cbm: "status changed by currentUser() order by updated desc"
+  viewed: "issuekey in issueHistory() order by lastViewed DESC"
+  assigned: "assignee = currentUser() order by updated DESC"
+  2weeks: "updated >= -2w and issuekey in issueHistory() order by lastViewed DESC"
+  vweek: "issuekey in issueHistory() ORDER BY lastViewed DESC"
+
+priority-lifecyle:
+  - P1-Critical: 1h
+  - P2-High-Priority: 8h
+  - P3-Medium-Priority: 24h
+  - P4-Low-Priority: 3d
+  - P5-Projects: 5d
+
+search-fields:
+  - key
+  - summary
+  - priority
+  - updated
+  - labels
+  - status
+  - assignee
+  - creator
+  - reporter
+  - issuetype
+  - project
+  - watchers
+  - url
+#+END_SRC
+
+**** Add your credentials with =jira config=
+#+BEGIN_SRC sh
+$ jira config
+What is your Jira password? (will not echo) :****
+Add the following lines to your ~/.jira.yaml
+secrets: V2UncmUgbm8gc3RyYW5nZXJzIHRvIGxvdmUKWW91IGtub3cgdGhlIHJ1bGVzIGFuZCBzbyBkbyBJCkEgZnVsbCBjb21taXRtZW50J3Mgd2hhdCBJJ20gdGhpbmtpbmcgb2YKWW91IHdvdWxkbnQgZ2V0IHRoaXMgZnJvbSBhbnkgb3RoZXIgZ3V5CkkganVzdCB3YW5uYSB0ZWxsIHlvdSBob3cgSSdtIGZlZWxpbmcKR290dGEgbWFrZSB5b3UgdW5kZXJzdGFuZApOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UKV2UndmUga25vd24gZWFjaCBvdGhlciBmb3Igc28gbG9uZwpZb3VyIGhlYXJ0J3MgYmVlbiBhY2hpbmcKQnV0IHlvdSdyZSB0b28gc2h5IHRvIHNheSBpdApJbnNpZGUgd2UgYm90aCBrbm93IHdoYXQncyBiZWVuIGdvaW5nIG9uCldlIGtub3cgdGhlIGdhbWUgYW5kIHdlJ3JlIGdvbm5hIHBsYXkgaXQKQW5ubm5uZCBpZiB5b3UgYXNrIG1lIGhvdyBJJ20gZmVlbGluZwpEb24ndCB0ZWxsIG1lIHlvdSdyZSB0b28gYmxpbmQgdG8gc2VlCk5ldmVyIGdvbm5hIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGxldCB5b3UgZG93bgpOZXZlciBnb25uYSBydW4gYXJvdW5kIGFuZCBkZXNlcnQgeW91Ck5ldmVyIGdvbm5hIG1ha2UgeW91IGNyeQpOZXZlciBnb25uYSBzYXkgZ29vZGJ5ZQpOZXZlciBnb25uYSB0ZWxsIGEgbGllIGFuZCBodXJ0IHlvdQpOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UKR2l2ZSB5b3UgdXAgZ2l2ZSB5b3UgdXAKR2l2ZSB5b3UgdXAgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgZ2l2ZQpOZXZlciBnb25uYSBnaXZlIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGdpdmUKTmV2ZXIgZ29ubmEgZ2l2ZSBnaXZlIHlvdSB1cApXZSd2ZSBrbm93biBlYWNoIG90aGVyIGZvciBzbyBsb25nCllvdXIgaGVhcnQncyBiZWVuIGFjaGluZwpCdXQgeW91J3JlIHRvbyBzaHkgdG8gc2F5IGl0Ckluc2lkZSB3ZSBib3RoIGtub3cgd2hhdCdzIGJlZW4gZ29pbmcgb24KV2Uga25vdyB0aGUgZ2FtZSBhbmQgd2UncmUgZ29ubmEgcGxheSBpdApJIGp1c3Qgd2FubmEgdGVsbCB5b3UgaG93IEknbSBmZWVsaW5nCkdvdHRhIG1ha2UgeW91IHVuZGVyc3RhbmQKTmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgbGV0IHlvdSBkb3duCk5ldmVyIGdvbm5hIHJ1biBhcm91bmQgYW5kIGRlc2VydCB5b3UKTmV2ZXIgZ29ubmEgbWFrZSB5b3UgY3J5Ck5ldmVyIGdvbm5hIHNheSBnb29kYnllCk5ldmVyIGdvbm5hIHRlbGwgYSBsaWUgYW5kIGh1cnQgeW91Ck5ldmVyIGdvbm5hIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGxldCB5b3UgZG93bgpOZXZlciBnb25uYSBydW4gYXJvdW5kIGFuZCBkZXNlcnQgeW91Ck5ldmVyIGdvbm5hIG1ha2UgeW91IGNyeQpOZXZlciBnb25uYSBzYXkgZ29vZGJ5ZQpOZXZlciBnb25uYSB0ZWxsIGEgbGllIGFuZCBodXJ0IHlvdQpOZXZlciBnb25uYSBnaXZlIHlvdSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQgZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2RieWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UK
+
+#+END_SRC
+Once you have added your =secrets:= output from the above command to your =~/.jira.yaml= you should be able to run the commands
+
+*** Commands
+**** A walk through of typical Jira commands
+***** Defining saved queries
+      Using saved queries allows you to invoke them directly.
+- Find all tickets opened by me
+#+BEGIN_SRC sh
+jira search "assignee = currentUser() AND status != Closed order by status DESC"
+#+END_SRC
+- This can be simplified by adding this to the =queries= list in the =~/.jira.yaml= as is show above, saved as =myopen=
+- Running a saved query is as follows
+#+BEGIN_SRC sh
+jira q myopen
+#+END_SRC
+
+| key         | summary                   | priority  | updated         | labels        | status      | assignee | creator | reporter   | issuetype    | project | watchers | url                                             |
+|-------------+---------------------------+-----------+-----------------+---------------+-------------+----------+---------+------------+--------------+---------+----------+-------------------------------------------------|
+| DEVOPSY-005 | Never leave your boat     | Medium-P3 | Wed Jun 05 2019 | ()            | Blocked     | ober     | joe     | Fenster    | Connectivity | devopsy |        2 | https://jira.linbsd.org:8443/browse/DEVOPSY-005 |
+| DEVOPSY-004 | Fix foot pegs to not move | Medium-P3 | Tue Oct 29 2019 | (strong feet) | Blocked     | ober     | bob     | whattabout | Task         | devopsy |        1 | https://jira.linbsd.org:8443/browse/DEVOPSY-004 |
+| DEVOPSY-003 | Buy replacement paddle    | Medium-P3 | Wed Oct 30 2019 | ()            | In Progress | ober     | ober    | ober       | Task         | devopsy |        1 | https://jira.linbsd.org:8443/browse/DEVOPSY-003 |
+| DEVOPSY-002 | Redo deck lines           | Medium-P3 | Thu Nov 07 2019 | ()            | In Progress | ober     | ken     | Ontale     | Story        | devopsy |        2 | https://jira.linbsd.org:8443/browse/DEVOPSY-002 |
+| DEVOPSY-001 | Take more bracing classes | Medium-P3 | Mon Nov 04 2019 | ()            | Open        | ober     | thelma  | Winston    | Task         | devopsy |        1 | https://jira.linbsd.org:8443/browse/DEVOPSY-001 |
+
+
+***** Customizing the output.
+Say you have line wraps happening because of too much data to fit on the screen.
+The =search-fields= list in the =~/jira.yaml= controls the order, and inclusion of the fields you wish to see.
+The listing above are the default fields, and order.
+Feel free to omit the fields that matter least in order to avoid line wrapping.
+**** Creating Tickets
+***** Simple way
+      We run the command, without arguments, to get usage.
+#+BEGIN_SRC sh
+$ jira create
+Wrong number of arguments. Usage is:
+jira create <project> <summary> <description>
+#+END_SRC
+      Now to create a test ticket
+#+BEGIN_SRC sh
+$ jira create DEVOPSY "This is a test" "Please Close"
+{"id":"2118181","key":"DEVOPSY-0004","self":"https://jira.linbsd.org:8443/rest/api/2/issue/0004"}
+#+END_SRC
+     Now let's comment on it, then close it.
+#+BEGIN_SRC sh
+$ jira comment
+Wrong number of arguments. Usage is:
+jira comment <issue> <comment>
+$ jira comment devopsy-0004 "closing this issue"
+#+END_SRC
+     Let's see the change
+#+BEGIN_SRC sh
+$ jira issue devopsy-0004
+ Summary: This is a test
+Description: The issue is open and ready for the assignee to start work on it.
+State: Open
+Priority: Medium-P3
+Issue Type: Task
+Description: Please Close
+Summary: This is a test
+Last Viewed: #!void
+Created: 2019-11-07T18:39:23.000+0000
+Status: Open
+Reporter:  ober ober@linbsd.org
+Project: devopsy
+Watch Count: 1
+Creator:  ober ober@linbsd.org
+Subtasks:
+|  Id|  Summary|  Status|  Priority|
+|----+---------+--------+----------|
+Comments:
+Comment:   on 2019-11-07T18:40:28.000+0000 said:
+closing this issue
+Assignee: ober ober@linbsd.org
+#+END_SRC
+    Now we close it.
+#+BEGIN_SRC sh
+$ jira transition
+Wrong number of arguments. Usage is:
+jira transition <issue name> <transition id>
+$ jira transitions devopsy-0005
+#+END_SRC
+|  id | name           | toname      | tostate                                                                                                                        |
+|-----+----------------+-------------+--------------------------------------------------------------------------------------------------------------------------------|
+|   4 | Start Progress | In Progress | This issue is being actively worked on at the moment by the assignee.                                                          |
+|   5 | Resolve Issue  | Resolved    | A resolution has been taken, and it is awaiting verification by reporter. From here issues are either reopened, or are closed. |
+|   2 | Close Issue    | Closed      | The issue is considered finished, the resolution is correct. Issues which are closed can be reopened.                          |
+| 721 | Block          | Blocked     |                                                                                                                                |
+     This shows us the transition states we can move to. Let's close!
+#+BEGIN_SRC sh
+$ jira transition DEVOPSY-0005 2
+OK
+#+END_SRC
+    All done
+***** Using templates
+      So typically we need to create tickets with specific values set.
+      This is an entry from my =~/.jira.yaml= that allows me to create a ticket assigned to me.
+#+BEGIN_SRC sh
+creations:
+  DEVOPSY-ME:
+    project: DEVOPSY
+    summary: "#{summary}"
+    assignee: "#{USER}"
+    issuetype: Task
+    priority: Medium-P3
+    estimate: 10
+    duedate: "2020-10-12"
+    description: "#{description}"
+#+END_SRC
+     This uses Ruby-esque string interpolation to handle variables.
+     These currently are from the Environment.
+     So =USER= is the value of my local Macos username.
+#+BEGIN_SRC sh
+$ jira run
+Wrong number of arguments. Usage is:
+jira run <creation name>
+$ summary="this is a test part 2" description="This is the body of the issue" jira run DEVOPSY-ME
+proj: 10071 sum: this is a test part 2 issuetype: 3 assignee: ober priority: Medium-P3 labels: (#f) estimate: 10 description: This is the body of the issue duedate: 2020-10-12 parent: #f
+Primary issue: DEVOPSY-0004
+#+END_SRC
+     There is a Jenkins job where we use this to create an Epic, and multiple subtasks.
+
+*** The rest of the available commands
+    Run =jira= to get the current options.
+#+BEGIN_SRC sh
+$ jira
+Jira: version 0.07
+Usage: jira <verb>
+Verbs:
+assign: Assign Issue to user
+comment: Add comment to Jira issue
+config: Setup your user and password in the config encrypted
+create: create new jira issue
+fields: Return all fields
+filters: Get all search filters
+get-issuetype-id: Get Jira issuetype id from name
+gettoken: Get Jira TokenVerify account credentials
+index-summary: Get Index Summary Details
+issue: Get Jira issue details
+issuetype: Get information on issuetype
+label: label a jira issue
+members: Get list of members of a given project.
+metadata: Get definitions of fields available for issue.
+open: Open Jira Issue in browser.
+parse-metas: Setup your user and password in the config encrypted
+priorities: List priorities available for issues
+projects: List all projects
+properties: Fetch all properties available for issue
+property: Fetch all properties available for issue
+q: Execute one of your stored queries in your ~/.jira.yaml
+run: Execute one of your stored creations in your ~/.jira.yaml
+search: Search for issues matching string
+transition: Transition issue to new state.
+transition-comment: Transition issue to new state while commenting.
+transitions: Get list of transitions available for issue
+watcher-add: Get Watchers on issue
+watcher-delete: Get Watchers on issue
+watchers: Get Watchers on issue
+#+END_SRC
+
+*** Full blown Epic, and subtasks with templates
+
+#+BEGIN_SRC yaml
+  creations:
+    epic-for-testing:
+      project: "#{Project}"
+      summary: "Sing to #{coworker}"
+      issuetype: Epic
+      assignee: "#{assignee}"
+      priority: "#{priority}"
+      estimate: 10
+      duedate: "#{duedate}"
+      description: >-
+        Lyrics:
+          We're no strangers to love
+          #{who} know the rules and so do I
+          A full commitment's what I'm thinking of
+          #{who} wouldnt get this from any other guy
+          I just wanna tell #{who} how I'm feeling
+          Gotta make #{who} understand
+          #{who}r heart's been aching
+          But #{who}'re too shy to say it
+          Inside we both know what's been going on
+          We know the game and we're gonna play it
+          Annnnnd if #{who} ask me how I'm feeling
+          Don't tell me #{who}'re too blind to see
+          We've known each other for so long
+          #{who}r heart's been aching
+          But #{who}'re too shy to say it
+          Inside we both know what's been going on
+          We know the game and we're gonna play it
+          I just wanna tell #{who} how I'm feeling
+          Gotta make #{who} understand
+
+      subtasks:
+        - summary: "Handle Chrous"
+          assignee: "#{assignee}"
+          duedate: "#{duedate}"
+          estimate: 10
+          issuetype: CleanUp
+          priority: "#{priority}"
+          project: "#{Project}"
+          description: >-
+            Never gonna give #{you} up
+            Never gonna let #{you} down
+            Never gonna run around and desert #{you}
+            Never gonna make #{you} cry
+            Never gonna say goodbye
+            Never gonna tell a lie and hurt #{you}
+
+        - summary: "Handle Ending"
+          assignee: "#{assignee}"
+          duedate: "#{duedate}"
+          estimate: 10
+          issuetype: CleanUp
+          priority: "#{priority}"
+          project: "#{Project}"
+          description: >-
+            Never gonna give #{who} up
+            Never gonna let #{who} down
+            Never gonna run around and desert #{who}
+            Never gonna make #{who} #{what}
+            Never gonna say goodbye
+            Never gonna tell a lie and hurt #{who}
+            Never gonna give #{who} up
+            Never gonna let #{who} down
+            Never gonna run around and desert #{who}
+            Never gonna make #{who} #{what}
+            Never gonna say goodbye
+            Never gonna tell a lie and hurt #{who}
+            Never gonna give #{who} up
+            Never gonna let #{who} down
+            Never gonna run around and desert #{who}
+            Never gonna make #{who} #{what}
+            Never gonna say goodbye
+            Never gonna tell a lie and hurt #{who}
+#+END_SRC
+      Then from Jenkins we prompt for the parameters show as =#{var}= above and set those prior to calling =jira run epic-for-account-removal=
+      The last line will reflect the Epic ticket id.
