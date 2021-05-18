@@ -184,6 +184,7 @@
       (style-output out .style))))
 
 (def (issuetype type)
+  (displayln "here: " type)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/2/issuetype/~a" .url type)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
@@ -191,39 +192,43 @@
           (error body))
         (present-item body)))))
 
-(def (create-issue project summary issuetype assignee priority labels originalestimate description duedate parent)
+(def (create-issue fields)
   (make-user-to-id-hash)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue" .url))
-           (fields (hash
-                    ("project" (hash ("id" project)))
-                    ("summary" summary)
-                    ("issuetype" (hash ("id" issuetype)))
-                    ("assignee" (hash ("accountId" (hash-get user-to-id assignee))))
-                    ;;	    ("components" [ (hash ("name" component)) ])
-                    ("priority" (hash ("name" priority)))
-                    ("customfield_17245" (hash ("id" 1)))
-                    ("customfield_15014" (hash ("id" 1)))
-;;                    ("environment" "prod")
-                    ("labels" [])
-                    ("timetracking" (hash
-                                     ("originalEstimate" originalestimate)))
-                    ("description" description)
-                    ("duedate" duedate))))
+    (for (k (hash-keys fields))
+      (let ((val (hash-get fields k)))
+        (display k)
+        (if (table? val)
+          (displayln (hash->list val))
+          (displayln val))))
+    (let ((url (format "~a/rest/api/2/issue" .url))
+           (assigneeId (hash-get user-to-id (hash-get fields "assignee"))))
+      (hash-put! fields "assignee" (hash ("accountId" assigneeId)))
+      ;; (hash-put! fields "assignee"
+      ;; (fields (hash
+      ;;               ("project" (hash ("id" project)))
+      ;;               ("summary" summary)
+      ;;               ("issuetype" (hash ("id" issuetype)))
+      ;;               ("assignee" (hash ("accountId" (hash-get user-to-id assignee))))
+      ;;               ("priority" (hash ("name" priority)))
+      ;;               ("customfield_17245" (hash ("id" "21451")))
+      ;;               ("customfield_15014" (hash ("id" "17048")))
+      ;;               ("labels" [])
+      ;;               ("timetracking" (hash
+      ;;                                ("originalEstimate" originalestimate)))
+      ;;               ("description" description)
+      ;;               ("duedate" duedate))))
 
-      (when parent
-        (hash-put! fields "parent" (hash ("id" parent))))
-
-      (when (= (string->number issuetype) 5)
-        (hash-put! fields "customfield_10496" summary))
+;;      (when parent
+;;        (hash-put! fields "parent" (hash ("id" parent))))
+      ;; (hash-put! fields issuetype (hash ("id" issuetype)))
 
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (hash (fields fields)))))
         (unless status
           (error body))
         (if (table? body)
           (let-hash body
-            .key)
-          body)))))
+            .key))))))
 
 (def (error-print msg (code 2))
   (displayln "Error: " msg)
@@ -232,16 +237,20 @@
 (def (converge-template template metas project)
   (if (not (table? template))
     (error-print "Not a table")
-    (hash
-     (assignee (interpol-from-env (hash-get template "assignee")))
-     (description (interpol-from-env (hash-get template "description")))
-     (duedate (interpol-from-env (hash-get template "duedate")))
-     (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
-     (labels [(interpol-from-env (hash-get template "labels"))])
-     (originalestimate (interpol-from-env (hash-get template "estimate")))
-     (priority (interpol-from-env (hash-get template "priority")))
-     (project (interpol-from-env (hash-get template "project")))
-     (summary (interpol-from-env (hash-get template "summary"))))))
+    (let ((converged (hash)))
+      (for (k (hash-keys template))
+        (hash-put! converged k (interpol-from-env (hash-get template k))))
+      converged)))
+
+     ;;  (assignee (interpol-from-env (hash-get template "assignee")))
+     ;; (description (interpol-from-env (hash-get template "description")))
+     ;; (duedate (interpol-from-env (hash-get template "duedate")))
+     ;; (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
+     ;; (labels [(interpol-from-env (hash-get template "labels"))])
+     ;; (originalestimate (interpol-from-env (hash-get template "estimate")))
+     ;; (priority (interpol-from-env (hash-get template "priority")))
+     ;; (project (interpol-from-env (hash-get template "project")))
+     ;; (summary (interpol-from-env (hash-get template "summary"))))))
 
 (def (execute-template template metas project parent)
   (if (not (table? template))
@@ -249,23 +258,13 @@
       (displayln "Error: execute-template passed non-table :"  template)
       (exit 2)))
   (let ((converged (converge-template template metas project)))
-    (let-hash converged
-      (let ((parent2 (create-issue (get-project-id .project metas)
-                                   .summary
-                                   .issuetype
-                                   .assignee
-                                   .priority
-                                   .labels
-                                   .originalestimate
-                                   .description
-                                   .duedate
-                                   parent))
-            (subtasks (hash-get template "subtasks")))
-        (when subtasks
-          (for (subtask subtasks)
-            (execute-template subtask metas projects parent2)))
-        (unless parent
-          (displayln "Primary issue: " parent2))))))
+    (let ((parent2 (create-issue converged))
+          (subtasks (hash-get template "subtasks")))
+      (when subtasks
+        (for (subtask subtasks)
+          (execute-template subtask metas projects parent2)))
+      (unless parent
+        (displayln "Primary issue: " parent2)))))
 
 (def (run creation)
   (let-hash (load-config)
@@ -308,6 +307,9 @@
       .?id)))
 
 (def (get-issuetype-id name metas)
+  (let-hash metas
+    (when (pair? .?projects)
+      (pp (hash->list (car .projects)))))
   (when (table? metas)
     (let-hash metas
       (let-hash (nth 0 .projects)
@@ -334,8 +336,8 @@
                                      .?description
                                      (yon .?subtask)
                                      .?iconUrl
-                                     .?self ] outs)))))))
-        (style-output outs .style)))))
+                                     .?self ] outs))))))))
+        (style-output outs .style))))
 
 (def (fields)
   (let-hash (load-config)
