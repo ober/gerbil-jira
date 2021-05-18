@@ -1,12 +1,9 @@
-FROM jaimef/alpine-current:static
+from jaimef/alpine-current:static
 
 MAINTAINER jaimef@linbsd.org
+COPY . /src
+RUN cd /src && rm -rf .gerbil
+RUN make -C /src linux-static
+RUN mv /src/jira-bin /bin
 
-COPY . /root/confluence
-ENV PATH "$PATH:/root/gerbil/bin"
-ENV GERBIL_HOME "/root/gerbil"
-RUN gxpkg install github.com/ober/oberlib
-RUN gxpkg link confluence /root/confluence
-RUN gxpkg build confluence
-COPY /root/.gerbil/bin/confluence /bin/confluence
-CMD ["confluence"]
+CMD [ /bin/jira ]
