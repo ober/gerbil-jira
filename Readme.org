@@ -346,5 +346,5 @@ watchers: Get Watchers on issue
             Never gonna say goodbye
             Never gonna tell a lie and hurt #{who}
 #+END_SRC
-      Then from Jenkins we prompt for the parameters show as =#{var}= above and set those prior to calling =jira run epic-for-account-removal=
+      Then from Jenkins we prompt for the parameters show as =#{var}= above and set those prior to calling =jira run epic-for-testing=
       The last line will reflect the Epic ticket id.
