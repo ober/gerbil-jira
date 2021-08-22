@@ -8,4 +8,4 @@
     (static-exe:
      "jira/jira"
      "-ld-options"
-     "-lpthread -lyaml -ldl -lssl -lz -L/usr/lib64")))
+     "-lpthread -lyaml -ldl -lssl -lz -L/usr/lib64 -L/usr/pkg/lib -I/usr/pkg/include")))
