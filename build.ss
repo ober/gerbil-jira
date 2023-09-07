@@ -5,9 +5,5 @@
 
 (defbuild-script
   '("jira/client"
-    (static-exe:
-     "jira/jira"
-     "-cc-options"
-     "-I/usr/pkg/include"
-     "-ld-options"
-     "-lpthread -lyaml -lssl -lz -L/usr/lib64 -L/usr/pkg/lib")))
+    (exe:
+     "jira/jira")))
