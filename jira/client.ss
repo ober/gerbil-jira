@@ -16,7 +16,7 @@
   :std/text/json
   :colorstring/colorstring
   :std/text/yaml
-  :std/misc/ports)
+  :std/misc/ports
   :ober/oberlib)
 
 (export #t)
