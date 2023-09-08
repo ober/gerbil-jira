@@ -1,12 +1,9 @@
 PROJECT := jira
-$(eval uid := $(shell id -u))
-$(eval gid := $(shell id -g))
 
 default: linux-static-docker
 
 deps:
 	/opt/gerbil/bin/gxpkg install github.com/ober/oberlib
-	/opt/gerbil/bin/gxpkg install github.com/yanndegat/colorstring
 
 build: deps
 	/opt/gerbil/bin/gxpkg link $(PROJECT) /src || true
@@ -15,7 +12,6 @@ build: deps
 linux-static-docker:
 	docker run -it \
 	-e GERBIL_PATH=/src/.gerbil \
-	-u "$(uid):$(gid)" \
 	-v $(PWD):/src:z \
 	gerbil/alpine \
 	make -C /src linux-static
@@ -27,7 +23,7 @@ linux-static: build
 	-exe $(PROJECT)/$(PROJECT).ss
 
 clean:
-	rm -Rf $(PROJECT)-bin
+	rm -rf $(PROJECT)-bin .gerbil
 
 install:
 	mv $(PROJECT)-bin /usr/local/bin/$(PROJECT)
