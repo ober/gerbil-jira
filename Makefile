@@ -1,4 +1,6 @@
 PROJECT := jira
+ARCH := $(shell uname -m)
+DOCKER_IMAGE := "gerbil/gerbilxx:$(ARCH)"
 
 default: linux-static-docker
 
@@ -13,17 +15,11 @@ linux-static-docker:
 	docker run -it \
 	-e GERBIL_PATH=/src/.gerbil \
 	-v $(PWD):/src:z \
-	gerbil/alpine \
-	make -C /src linux-static
-
-linux-static: build
-	/opt/gerbil/bin/gxc -o $(PROJECT)-bin -static \
-	-cc-options "-Bstatic" \
-	-ld-options "-static -lpthread -L/usr/lib64 -lssl -ldl -lyaml -lz" \
-	-exe $(PROJECT)/$(PROJECT).ss
+	$(DOCKER_IMAGE) \
+	make -C /src build
 
 clean:
-	rm -rf $(PROJECT)-bin .gerbil
+	rm -rf .gerbil
 
 install:
-	mv $(PROJECT)-bin /usr/local/bin/$(PROJECT)
+	mv .gerbil/bin/$(PROJECT) /usr/local/bin/$(PROJECT)
