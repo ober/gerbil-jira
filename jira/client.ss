@@ -3,21 +3,21 @@
 ;;; Jira client Library
 
 (import
+  :clan/text/yaml
   :gerbil/gambit
+  :ober/oberlib
   :std/crypto/cipher
-  :std/iter
   :std/format
   :std/generic/dispatch
+  :std/iter
   :std/misc/list
+  :std/misc/ports
   :std/pregexp
   :std/srfi/13
   :std/sugar
   :std/text/base64
   :std/text/json
-  :colorstring/colorstring
-  :std/text/yaml
-  :std/misc/ports
-  :ober/oberlib)
+  )
 
 (export #t)
 
