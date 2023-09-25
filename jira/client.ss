@@ -25,8 +25,6 @@
 (def version "0.22")
 
 (def config-file "~/.jira.yaml")
-(import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
-(import (rename-in :gerbil/gambit/os (time mytime)))
 (def program-name "jira")
 
 (def user-to-id #f)
