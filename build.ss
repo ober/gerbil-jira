@@ -6,4 +6,6 @@
 (defbuild-script
   '("jira/client"
     (exe:
-     "jira/jira")))
+     "jira/jira"
+     "-ld-options"
+     "-lyaml")))
