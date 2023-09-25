@@ -3,17 +3,20 @@
 ;;; Jira client binary
 
 (import
+  :clan/text/yaml
   :gerbil/gambit
+  :ober/jira/client
+  :ober/oberlib
   :std/crypto/cipher
   :std/crypto/etc
   :std/crypto/libcrypto
   :std/db/dbi
   :std/debug/heap
-  :std/iter
   :std/error
   :std/format
   :std/generic
   :std/generic/dispatch
+  :std/iter
   :std/misc/channel
   :std/misc/list
   :std/misc/ports
@@ -29,11 +32,9 @@
   :std/text/base64
   :std/text/json
   :std/text/utf8
-  :clan/text/yaml
   :std/text/zlib
   :std/xml/ssax
-  :ober/oberlib
-  :ober/jira/client)
+  )
 
 (export main)
 
