@@ -5,5 +5,5 @@
 
 (defbuild-script
   '("jira/client"
-    (static-exe:
+    (exe:
      "jira/jira")))
