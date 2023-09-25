@@ -7,4 +7,5 @@
 .gerbil
 .idea
 build-deps
+manifest.ss
 tmp/
