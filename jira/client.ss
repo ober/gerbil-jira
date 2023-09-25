@@ -1,4 +1,4 @@
-;; -*- Gerbil -*-
+g;; -*- Gerbil -*-
 ;;; © ober
 ;;; Jira client Library
 
