@@ -543,7 +543,7 @@
                     (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
               (if (table? .?assignee)
                 (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
-                (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (type-of .?assignee)))))))))))
+                (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (##type-id .?assignee)))))))))))
 
 (def (org-table-safe str)
   (if (string? str)
@@ -613,7 +613,7 @@
         (set! outs (cons headers outs))
         (for (user users)
           (unless (table? user)
-            (error "user is not a table, but a " (type-of user)))
+            (error "user is not a table, but a " (##type-id user)))
           (let-hash user
             (set! outs
               (cons
