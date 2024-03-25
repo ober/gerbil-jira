@@ -197,7 +197,7 @@
     (for (k (hash-keys fields))
       (let ((val (hash-get fields k)))
         (display k)
-        (if (table? val)
+        (if (hash-table? val)
           (displayln (hash->list val))
           (displayln val))))
     (let ((url (format "~a/rest/api/2/issue" .url))
@@ -225,7 +225,7 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (hash (fields fields)))))
         (unless status
           (error body))
-        (if (table? body)
+        (if (hash-table? body)
           (let-hash body
             .key))))))
 
@@ -234,7 +234,7 @@
   (exit code))
 
 (def (converge-template template metas project)
-  (if (not (table? template))
+  (if (not (hash-table? template))
     (error-print "Not a table")
     (let ((converged (hash)))
       (for (k (hash-keys template))
@@ -252,7 +252,7 @@
      ;; (summary (interpol-from-env (hash-get template "summary"))))))
 
 (def (execute-template template metas project parent)
-  (if (not (table? template))
+  (if (not (hash-table? template))
     (begin
       (displayln "Error: execute-template passed non-table :"  template)
       (exit 2)))
@@ -309,7 +309,7 @@
   (let-hash metas
     (when (pair? .?projects)
       (pp (hash->list (car .projects)))))
-  (when (table? metas)
+  (when (hash-table? metas)
     (let-hash metas
       (let-hash (nth 0 .projects)
         (let ((id 0))
@@ -324,10 +324,10 @@
     (let ((metas (createmetas .project-key .basic-auth .url))
           (outs [[ "Id" "Name"  "Untranslated Name" "Description" "Subtask" "Icon Url" "Url" ]]))
       (let-hash metas
-        (when (table? .?projects)
+        (when (hash-table? .?projects)
           (let-hash (car .projects)
             (for (its .issuetypes)
-              (when (table? its)
+              (when (hash-table? its)
                 (let-hash its
                   (set! outs (cons [ .?id
                                      .?name
@@ -347,7 +347,7 @@
           (error body))
         (when (list? body)
           (for (field body)
-            (when (table? field)
+            (when (hash-table? field)
               (let-hash field
                 (set! outs (cons [ .?id
                                    .?name
@@ -418,7 +418,7 @@
                  (rest-call 'post (format "~a?startAt=~a" url offset) (default-headers .basic-auth) (json-object->string data) 3))
             (unless status
               (error body))
-            (if (table? body)
+            (if (hash-table? body)
               (let-hash body
                 (set! outs (cons headers outs))
                 (for (iss .issues)
@@ -432,15 +432,15 @@
                            ("key" ..key)
                            ("description" (when .?description (org-table-safe .description)))
                            ("summary" (when .?summary (org-table-safe .summary)))
-                           ("priority" (when (table? .?priority) (hash-ref .?priority 'name)))
+                           ("priority" (when (hash-table? .?priority) (hash-ref .?priority 'name)))
                            ("updated" (when .?updated (date->custom .updated)))
                            ("labels" .?labels)
-                           ("status" (when (table? .?status) (hash-ref .status 'name)))
-                           ("assignee" (when (table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
-                           ("creator" (when (table? .?creator) (let-hash .creator (email-short .?emailAddress))))
-                           ("reporter" (when (table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
-                           ("issuetype" (when (table? .?issuetype) (let-hash .issuetype .?name)))
-                           ("project" (when (table? .?project) (let-hash .project .?name)))
+                           ("status" (when (hash-table? .?status) (hash-ref .status 'name)))
+                           ("assignee" (when (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
+                           ("creator" (when (hash-table? .?creator) (let-hash .creator (email-short .?emailAddress))))
+                           ("reporter" (when (hash-table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
+                           ("issuetype" (when (hash-table? .?issuetype) (let-hash .issuetype .?name)))
+                           ("project" (when (hash-table? .?project) (let-hash .project .?name)))
                            ("watchers" (hash-ref .watches 'watchCount))
                            ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
                 (when (> .?total (+ offset .maxResults))
@@ -491,10 +491,10 @@
   " Given the content of an issue, parse it and display appropriately"
   (make-user-to-id-hash)
   (let-hash (load-config)
-    (when (table? issue)
+    (when (hash-table? issue)
       (let-hash issue
         (when (and .?fields
-                   (table? .fields))
+                   (hash-table? .fields))
           (begin
             (let-hash .fields
               (displayln "** Summary: " .summary)
@@ -508,10 +508,10 @@
               (displayln "** Last Viewed: " .?lastViewed)
               (displayln "** Created: " .?created)
               (let-hash .status (displayln "** Status: " .?name))
-              (when (table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
+              (when (hash-table? .?reporter) (let-hash .reporter (displayln "** Reporter: " .?displayName " " .?emailAddress)))
               (let-hash .project (displayln "** Project: " .?name))
               (let-hash .watches (displayln "** Watch Count: " .?watchCount))
-              (when (table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
+              (when (hash-table? .?creator) (let-hash .creator (displayln "** Creator: " .?displayName " " .?emailAddress)))
               (when ...?custom-fields
                 (hash-for-each
                  (lambda (k v)
@@ -529,7 +529,7 @@
                   (for (subtask .subtasks)
                     (let-hash subtask
                       (let-hash .fields
-                        (let ((pri (if (table? .?priority)
+                        (let ((pri (if (hash-table? .?priority)
                                      (hash-get .?priority 'name)
                                      "N/A")))
                           (set! outs (cons [ ..?key .?summary (hash-ref .status 'name) pri ] outs))))))
@@ -541,7 +541,7 @@
                     (let-hash .author
                       (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
                     (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
-              (if (table? .?assignee)
+              (if (hash-table? .?assignee)
                 (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
                 (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (##type-id .?assignee)))))))))))
 
@@ -584,7 +584,7 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-         (when (table? body)
+         (when (hash-table? body)
            (let-hash body
              (when .?worklogs
                (for (worklog .worklogs)
@@ -612,7 +612,7 @@
       (when (list? users)
         (set! outs (cons headers outs))
         (for (user users)
-          (unless (table? user)
+          (unless (hash-table? user)
             (error "user is not a table, but a " (##type-id user)))
           (let-hash user
             (set! outs
@@ -656,7 +656,7 @@
                         (list? body)
                         (length>n? body 0))
                   (for (user body)
-                    (when (table? user)
+                    (when (hash-table? user)
                       (set! users (cons user users))))
                   (lp (+ offset 1000))))))
           (write-obj-to-file user-list users))))
@@ -680,7 +680,7 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (when (table? body)
+        (when (hash-table? body)
           (let-hash body
             (pi .?timeTrackingConfiguration)))))))
 
@@ -692,7 +692,7 @@
         (unless status
           (error body))
         (for (project body)
-          (when (table? project)
+          (when (hash-table? project)
             (let-hash project
               (set! outs (cons [ .?id .?key .?name .?projectTypeKey ] outs))))))
       (style-output outs))))
@@ -703,12 +703,12 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (when (table? body)
+        (when (hash-table? body)
           (let-hash body
             (when .?keys
               (when (list? .keys)
                 (for (property .keys)
-                  (when (table? property)
+                  (when (hash-table? property)
                     (let-hash property
                       (displayln .?key " " .?self))))))))))))
 
