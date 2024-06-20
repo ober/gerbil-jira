@@ -34,7 +34,7 @@
 
 (export main)
 
-(declare (not optimize-dead-definitions))
+;;(declare (not optimize-dead-definitions))
 
 (def program-name "jira")
 
