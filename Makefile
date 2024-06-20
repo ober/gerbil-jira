@@ -2,6 +2,8 @@ PROJECT := jira
 ARCH := $(shell uname -m)
 DOCKER_IMAGE := "gerbil/gerbilxx:$(ARCH)-master"
 PWD := $(shell pwd)
+UID := $(shell id -u)
+GID := $(shell id -g)
 
 default: linux-static-docker
 
@@ -16,9 +18,7 @@ build: deps
 linux-static-docker: clean
 	docker run -t \
 	-e GERBIL_PATH=/src/.gerbil \
-	-e USER=$(USER) \
-	-e UID=$(id -u) \
-	-e GID=$(id -g) \
+	-u "$(UID):$(GID)" \
 	-v $(PWD):/src:z \
 	$(DOCKER_IMAGE) \
 	make -C /src build
