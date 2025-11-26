@@ -686,7 +686,7 @@
 
 (def (projects)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/project" .url))
+    (let ((url (format "~a/rest/api/3/project/search?startAt=0&maxResults=100" .url))
           (outs [[ "Id" "Key" "Name" "Type" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
