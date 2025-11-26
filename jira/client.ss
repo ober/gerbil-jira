@@ -712,9 +712,6 @@
                     (let-hash property
                       (displayln .?key " " .?self))))))))))))
 
-(def (get-new-ip uri host)
-  (pregexp-replace "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" uri (resolve-ipv4 host)))
-
 (def (config)
   (let-hash (load-config)
     (display "What is your Jira password? (will not echo) :")
