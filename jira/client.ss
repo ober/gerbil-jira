@@ -22,7 +22,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.22")
+(def version "0.23")
 
 (def config-file "~/.jira.yaml")
 (def program-name "jira")
@@ -58,7 +58,7 @@
 
 (def (gettoken)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/serverinfo" .url))
+    (let* ((url (format "~a/rest/api/3/serverinfo" .url))
 	   (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
@@ -67,7 +67,7 @@
 
 (def (filters)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/filter" .url))
+    (let* ((url (format "~a/rest/api/3/filter" .url))
 	   (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
@@ -79,7 +79,7 @@
 (def (transitions issue)
   (let-hash (load-config)
     (let* ((outs [["id" "name" "toname" "tostate"]])
-	   (url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+	   (url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
 	   (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
@@ -94,7 +94,7 @@
 (def (transitions-fields issue)
   (let-hash (load-config)
     (let* ((outs [["id" "name" "toname" "tostate"]])
-	   (url (format "~a/rest/api/2/issue/~a/transitions?expand=transitions.fields" .url issue))
+	   (url (format "~a/rest/api/3/issue/~a/transitions?expand=transitions.fields" .url issue))
 	   (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
@@ -108,14 +108,14 @@
                  ) .fields))))))))
 
 (def (createmetas project basic-auth url)
-  (let (url (format "~a/rest/api/2/issue/createmeta?projectKeys=~a" url project))
+  (let (url (format "~a/rest/api/3/issue/createmeta?projectKeys=~a" url project))
     (with ([status body] (rest-call 'get url (default-headers basic-auth)))
       (unless status
         (error body))
       body)))
 
 (def (issuemetas basic-auth url)
-  (let (url (format "~a/rest/api/2/issue/createmeta" url))
+  (let (url (format "~a/rest/api/3/issue/createmeta" url))
     (with ([status body] (rest-call 'get url (default-headers basic-auth)))
       (unless status
         (error body))
@@ -123,7 +123,7 @@
 
 (def (transition issue trans)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+    (let ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
           (data (hash ("transition" (hash ("id" trans))))))
       (with ([ status body ] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
@@ -132,7 +132,7 @@
 
 (def (transition-with-field issue trans field value)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+    (let* ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
 	   (data (hash
                   ("update" (hash (field [ (hash ("add" (hash ("comment" value)))) ])))
 		  ("transition" (hash ("id" trans))))))
@@ -143,7 +143,7 @@
 
 (def (transition-comment issue trans comment)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/transitions" .url issue))
+    (let* ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
            (data (hash
                   ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
         	  ("transition" (hash ("id" trans))))))
@@ -155,14 +155,14 @@
 (def (watcher-del issue name)
   (let-hash (load-config)
     (make-user-to-id-hash)
-    (let ((url (format "~a/rest/api/2/issue/~a/watchers?accountId=~a" .url issue (hash-get user-to-id name))))
+    (let ((url (format "~a/rest/api/3/issue/~a/watchers?accountId=~a" .url issue (hash-get user-to-id name))))
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (present-item body)))))
 
 (def (watcher-add issue name)
   (let-hash (load-config)
     (make-user-to-id-hash)
-    (let ((url (format "~a/rest/api/2/issue/~a/watchers" .url issue))
+    (let ((url (format "~a/rest/api/3/issue/~a/watchers" .url issue))
           (add (hash-get user-to-id name)))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string add)))
         (unless status
@@ -172,7 +172,7 @@
 (def (watchers issue)
   (let-hash (load-config)
     (let ((out [[ "Name" "Email" "Active? " ]])
-          (url (format "~a/rest/api/2/issue/~a/watchers" .url issue)))
+          (url (format "~a/rest/api/3/issue/~a/watchers" .url issue)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -185,7 +185,7 @@
 (def (issuetype type)
   (displayln "here: " type)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issuetype/~a" .url type)))
+    (let ((url (format "~a/rest/api/3/issuetype/~a" .url type)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -200,7 +200,7 @@
         (if (hash-table? val)
           (displayln (hash->list val))
           (displayln val))))
-    (let ((url (format "~a/rest/api/2/issue" .url))
+    (let ((url (format "~a/rest/api/3/issue" .url))
            (assigneeId (hash-get user-to-id (hash-get fields "assignee"))))
       (hash-put! fields "assignee" (hash ("accountId" assigneeId)))
       ;; (hash-put! fields "assignee"
@@ -278,7 +278,7 @@
 (def (create project summary description)
   (let-hash (load-config)
     (let* ((metas (createmetas .project .basic-auth .url))
-           (url (format "~a/rest/api/2/issue" .url))
+           (url (format "~a/rest/api/3/issue" .url))
            (data (hash
                   ("fields"
                    (hash
@@ -340,7 +340,7 @@
 
 (def (fields)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/field" .url))
+    (let ((url (format "~a/rest/api/3/field" .url))
           (outs [[ "Id" "Name" "Key" "Schema" "Clause Names" "Custom?" "Long Name" "navigable?" "Searchable?" "Orderable?" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -363,7 +363,7 @@
 
 (def (editmeta issue)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a" .url issue)))
+    (let ((url (format "~a/rest/api/3/issue/~a" .url issue)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -371,7 +371,7 @@
 
 (def (label issue label)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a" .url issue))
+    (let ((url (format "~a/rest/api/3/issue/~a" .url issue))
           (data (hash
                  ("fields"
                   (hash
@@ -385,7 +385,7 @@
   (let-hash (load-config)
     (let* ((data (hash))
            (fields (hash))
-           (url (format "~a/rest/api/2/issue/~a" .url issue)))
+           (url (format "~a/rest/api/3/issue/~a" .url issue)))
       (hash-put! fields field content)
       (hash-put! data "fields" fields)
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
@@ -403,7 +403,7 @@
                     (string-contains query "("))
               (format "~a" query)
               (format "text ~~ '~a'" query)))
-           (url (format "~a/rest/api/2/search" .?url))
+           (url (format "~a/rest/api/3/search" .?url))
            (headers (if (and sf
                              (list? sf)
                              (length>n? sf 1))
@@ -456,7 +456,7 @@
 
 (def (comment issue comment)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/comment" .url issue))
+    (let* ((url (format "~a/rest/api/3/issue/~a/comment" .url issue))
            (fixed-comment (convert-users-to-ids comment))
            (data (hash
                   ("body" fixed-comment))))
@@ -467,7 +467,7 @@
 
 (def (assign issue user)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/issue/~a/assignee" .url issue))
+    (let* ((url (format "~a/rest/api/3/issue/~a/assignee" .url issue))
            (id (name-to-id user))
            (data (hash ("accountId" id))))
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
@@ -477,7 +477,7 @@
 
 (def (user pattern)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/user/search?username=~a" .url pattern))
+    (let ((url (format "~a/rest/api/3/user/search?username=~a" .url pattern))
           (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -552,7 +552,7 @@
 
 (def (issue id)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/issue/~a" .url id)))
+    (let ((url (format "~a/rest/api/3/issue/~a" .url id)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -560,7 +560,7 @@
 
 (def (priorities)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/priority" .url))
+    (let ((url (format "~a/rest/api/3/priority" .url))
           (outs [[ "Name" "Id" "Description" "Status Color" "Url" "Icon Url" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -572,7 +572,7 @@
 
 (def (index-summary)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/index/summary" .url)))
+    (let ((url (format "~a/rest/api/3/index/summary" .url)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -592,7 +592,7 @@
 
 (def (members project)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/2/group/member?groupname=~a&includeInactiveUsers=false" .url project)))
+    (let* ((url (format "~a/rest/api/3/group/member?groupname=~a&includeInactiveUsers=false" .url project)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -647,7 +647,7 @@
       (set! users (read-obj-from-file user-list))
       (begin
         (let-hash (load-config)
-          (let ((url (format "~a/rest/api/2/users" .url)))
+          (let ((url (format "~a/rest/api/3/users" .url)))
             (let lp ((offset 0))
               (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
                 (unless status
@@ -675,7 +675,7 @@
 (def (configuration)
   "Return the configuration of the Jira server"
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/configuration" .url))
+    (let ((url (format "~a/rest/api/3/configuration" .url))
           (outs [[ "Id" "Key" "Name" "Type" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -686,7 +686,7 @@
 
 (def (projects)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/2/project" .url))
+    (let ((url (format "~a/rest/api/3/project" .url))
           (outs [[ "Id" "Key" "Name" "Type" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
