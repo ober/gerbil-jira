@@ -403,7 +403,7 @@
                     (string-contains query "("))
               (format "~a" query)
               (format "text ~~ '~a'" query)))
-           (url (format "~a/rest/api/3/search" .?url))
+           (url (format "~a/rest/api/3/search/jql" .?url))
            (headers (if (and sf
                              (list? sf)
                              (length>n? sf 1))
@@ -647,7 +647,7 @@
       (set! users (read-obj-from-file user-list))
       (begin
         (let-hash (load-config)
-          (let ((url (format "~a/rest/api/3/users" .url)))
+          (let ((url (format "~a/rest/api/3/users/search" .url)))
             (let lp ((offset 0))
               (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
                 (unless status
