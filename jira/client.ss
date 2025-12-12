@@ -558,7 +558,7 @@
           (data (hash
                  ("name" name)
                  ("description" description)
-                 ("projectId" project-key)
+                 ("project" project-key)
                  ("releaseDate" release-date))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
