@@ -82,7 +82,7 @@
    ("version-create" (hash (description: "Create project version") (usage: "version-create <project key> <name> <description> <release date>") (count: 4)))
    ("work" (hash (description: "Get work log for issue.") (usage: "work <issue id>") (count: 1)))
    ("watcher-add" (hash (description: "Add watcher to issue") (usage: "watcher-add <issue id> <username>") (count: 2)))
-   ("watcher-del" (hash (description: "Remove a person from the Watcher list for issue") (usage: "watcher-del <issue id> <username>") (count: 2)))
+   ("watcher-del" (hash (description: "Remove watcher from issue") (usage: "watcher-del <issue id> <username>") (count: 2)))
    ("watchers" (hash (description: "Get Watchers on issue") (usage: "watchers <issue id>") (count: 1)))
    ))
 

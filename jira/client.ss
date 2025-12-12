@@ -401,15 +401,6 @@
           (error body))
         (present-item body)))))
 
-(def (edit-issue issue fields-data)
-  (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/issue/~a" .url issue))
-          (data (hash ("fields" fields-data))))
-      (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
-        (unless status
-          (error body))
-        (present-item body)))))
-
 (def (get-attachment attachment-id)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/3/attachment/~a" .url attachment-id)))
