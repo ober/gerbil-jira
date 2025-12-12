@@ -410,22 +410,6 @@
           (error body))
         (present-item body)))))
 
-(def (add-attachment issue filepath)
-  (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/issue/~a/attachments" .url issue)))
-      (with ([status body] (rest-call 'post-file url (default-headers .basic-auth) filepath))
-        (unless status
-          (error body))
-        (present-item body)))))
-
-(def (delete-attachment attachment-id)
-  (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/attachment/~a" .url attachment-id)))
-      (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
-        (unless status
-          (error body))
-        (present-item body)))))
-
 (def (get-attachment attachment-id)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/3/attachment/~a" .url attachment-id)))
