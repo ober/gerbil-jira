@@ -239,34 +239,147 @@ Jira: version 0.07
 Usage: jira <verb>
 Verbs:
 assign: Assign Issue to user
+changelog: Get issue changelog
 comment: Add comment to Jira issue
+comment-delete: Delete comment from issue
+comment-update: Update comment on issue
+component-create: Create project component
+components: Get project components
 config: Setup your user and password in the config encrypted
 create: create new jira issue
+delete-issue: Delete an issue
 fields: Return all fields
 filters: Get all search filters
-get-issuetype-id: Get Jira issuetype id from name
-gettoken: Get Jira TokenVerify account credentials
-index-summary: Get Index Summary Details
+get-project: Get project details
 issue: Get Jira issue details
-issuetype: Get information on issuetype
 label: label a jira issue
+link-create: Create issue link
+link-delete: Delete issue link
+link-get: Get issue link
+link-types: Get issue link types
 members: Get list of members of a given project.
-metadata: Get definitions of fields available for issue.
+metas: Print out server side configurations for your account
+myself: Get current user details
 open: Open Jira Issue in browser.
-parse-metas: Setup your user and password in the config encrypted
 priorities: List priorities available for issues
+project-roles: Get project roles
+project-versions: Get project versions
 projects: List all projects
 properties: Fetch all properties available for issue
-property: Fetch all properties available for issue
 q: Execute one of your stored queries in your ~/.jira.yaml
+remote-link-create: Create remote link on issue
+remote-link-delete: Delete remote link from issue
+remote-links: Get remote links for issue
 run: Execute one of your stored creations in your ~/.jira.yaml
 search: Search for issues matching string
 transition: Transition issue to new state.
 transition-comment: Transition issue to new state while commenting.
 transitions: Get list of transitions available for issue
-watcher-add: Get Watchers on issue
-watcher-delete: Get Watchers on issue
+update-field: Update a custom field with the new value
+users: Get list of users.
+version-create: Create project version
+work: Get work log for issue.
+watcher-add: Add watcher to issue
+watcher-del: Remove watcher from issue
 watchers: Get Watchers on issue
+#+END_SRC
+
+*** New API v3 Features
+
+**** Issue Management
+***** Delete an issue
+#+BEGIN_SRC sh
+$ jira delete-issue DEVOPSY-123
+#+END_SRC
+
+***** Get issue changelog
+#+BEGIN_SRC sh
+$ jira changelog DEVOPSY-123
+#+END_SRC
+
+**** Comment Management
+***** Update an existing comment
+#+BEGIN_SRC sh
+$ jira comment-update DEVOPSY-123 10001 "Updated comment text"
+#+END_SRC
+
+***** Delete a comment
+#+BEGIN_SRC sh
+$ jira comment-delete DEVOPSY-123 10001
+#+END_SRC
+
+**** Issue Links
+***** List available link types
+#+BEGIN_SRC sh
+$ jira link-types
+#+END_SRC
+
+***** Create a link between issues
+#+BEGIN_SRC sh
+$ jira link-create "Blocks" DEVOPSY-123 DEVOPSY-456
+#+END_SRC
+
+***** Get link details
+#+BEGIN_SRC sh
+$ jira link-get 12345
+#+END_SRC
+
+***** Delete a link
+#+BEGIN_SRC sh
+$ jira link-delete 12345
+#+END_SRC
+
+**** Project Management
+***** Get project details
+#+BEGIN_SRC sh
+$ jira get-project DEVOPSY
+#+END_SRC
+
+***** Get project roles
+#+BEGIN_SRC sh
+$ jira project-roles DEVOPSY
+#+END_SRC
+
+***** Get project versions
+#+BEGIN_SRC sh
+$ jira project-versions DEVOPSY
+#+END_SRC
+
+***** Create a new version
+#+BEGIN_SRC sh
+$ jira version-create DEVOPSY "v1.0.0" "Release version 1.0.0" "2024-12-31"
+#+END_SRC
+
+***** Get project components
+#+BEGIN_SRC sh
+$ jira components DEVOPSY
+#+END_SRC
+
+***** Create a new component
+#+BEGIN_SRC sh
+$ jira component-create DEVOPSY "UI" "User interface components"
+#+END_SRC
+
+**** Remote Links
+***** Get remote links for an issue
+#+BEGIN_SRC sh
+$ jira remote-links DEVOPSY-123
+#+END_SRC
+
+***** Create a remote link
+#+BEGIN_SRC sh
+$ jira remote-link-create DEVOPSY-123 "https://example.com" "Example Link"
+#+END_SRC
+
+***** Delete a remote link
+#+BEGIN_SRC sh
+$ jira remote-link-delete DEVOPSY-123 10001
+#+END_SRC
+
+**** User Information
+***** Get current user details
+#+BEGIN_SRC sh
+$ jira myself
 #+END_SRC
 
 *** Full blown Epic, and subtasks with templates

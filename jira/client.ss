@@ -393,6 +393,220 @@
           (error body))
         (present-item body)))))
 
+(def (delete-issue issue)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a" .url issue)))
+      (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (get-attachment attachment-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/attachment/~a" .url attachment-id)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (changelog issue)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/changelog" .url issue))
+          (outs [[ "Id" "Author" "Created" "Field" "From" "To" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when .?values
+              (for (change .values)
+                (let-hash change
+                  (let ((author-name (if (hash-table? .?author)
+                                       (hash-ref .author 'displayName)
+                                       "Unknown")))
+                    (when .?items
+                      (for (item .items)
+                        (let-hash item
+                          (set! outs (cons [ ..?id author-name ..?created .?field .?fromString .?toString ] outs)))))))))))
+        (style-output outs .style)))))
+
+(def (delete-comment issue comment-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/comment/~a" .url issue comment-id)))
+      (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (update-comment issue comment-id comment-text)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/comment/~a" .url issue comment-id))
+          (data (hash ("body" comment-text))))
+      (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (create-link link-type inward-issue outward-issue)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issueLink" .url))
+          (data (hash
+                 ("type" (hash ("name" link-type)))
+                 ("inwardIssue" (hash ("key" inward-issue)))
+                 ("outwardIssue" (hash ("key" outward-issue))))))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (delete-link link-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issueLink/~a" .url link-id)))
+      (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (get-link link-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issueLink/~a" .url link-id)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (link-types)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issueLinkType" .url))
+          (outs [[ "Id" "Name" "Inward" "Outward" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when .?issueLinkTypes
+              (for (linktype .issueLinkTypes)
+                (let-hash linktype
+                  (set! outs (cons [ .?id .?name .?inward .?outward ] outs)))))))
+        (style-output outs .style)))))
+
+(def (myself)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/myself" .url)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (get-project project-key)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/project/~a" .url project-key)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (project-roles project-key)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/project/~a/role" .url project-key)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (project-versions project-key)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/project/~a/versions" .url project-key))
+          (outs [[ "Id" "Name" "Description" "Released" "Archived" "Release Date" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (version body)
+            (let-hash version
+              (set! outs (cons [ .?id .?name .?description (yon .?released) (yon .?archived) .?releaseDate ] outs)))))
+        (style-output outs .style)))))
+
+(def (project-components project-key)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/project/~a/components" .url project-key))
+          (outs [[ "Id" "Name" "Description" "Lead" "Assignee Type" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (component body)
+            (let-hash component
+              (let ((lead-name (if (hash-table? .?lead)
+                                 (hash-ref .lead 'displayName)
+                                 "None")))
+                (set! outs (cons [ .?id .?name .?description lead-name .?assigneeType ] outs))))))
+        (style-output outs .style)))))
+
+(def (create-version project-key name description release-date)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/version" .url))
+          (data (hash
+                 ("name" name)
+                 ("description" description)
+                 ("project" project-key)
+                 ("releaseDate" release-date))))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (create-component project-key name description)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/component" .url))
+          (data (hash
+                 ("name" name)
+                 ("description" description)
+                 ("project" project-key))))
+      (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (remote-links issue)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/remotelink" .url issue))
+          (outs [[ "Id" "Title" "URL" "Relationship" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (link body)
+            (let-hash link
+              (let ((link-url (if (hash-table? .?object)
+                                (hash-ref .object 'url)
+                                "N/A"))
+                    (link-title (if (hash-table? .?object)
+                                  (hash-ref .object 'title)
+                                  "N/A")))
+                (set! outs (cons [ .?id link-title link-url .?relationship ] outs))))))
+        (style-output outs .style)))))
+
+(def (create-remote-link issue url title)
+  (let-hash (load-config)
+    (let ((api-url (format "~a/rest/api/3/issue/~a/remotelink" .url issue))
+          (data (hash
+                 ("object" (hash
+                            ("url" url)
+                            ("title" title))))))
+      (with ([status body] (rest-call 'post api-url (default-headers .basic-auth) (json-object->string data)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
+(def (delete-remote-link issue link-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/issue/~a/remotelink/~a" .url issue link-id)))
+      (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (present-item body)))))
+
 (def (search query)
   (let-hash (load-config)
     (let* ((outs [])
