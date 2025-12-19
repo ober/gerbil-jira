@@ -40,8 +40,8 @@
     (let-hash config
       (hash-put! config 'style (or .?style "org-mode"))
       (when .?secrets
-	(let-hash (u8vector->object (base64-decode .secrets))
-	  (let ((password (get-password-from-config .key .iv .password)))
+	    (let-hash (u8vector->object (base64-decode .secrets))
+	      (let ((password (get-password-from-config .key .iv .password)))
             (hash-put! config 'basic-auth (make-basic-auth ..?user password))))))
     config))
 
@@ -49,17 +49,17 @@
   (let-hash (load-config)
     (if .?queries
       (let ((cql (hash-get .queries alias)))
-	(if cql
-	  (search cql)
-	  (begin
-	    (displayln "Error: could not find alias " alias " in your ~/.jira.yaml")
-	    (exit 2))))
+	    (if cql
+	      (search cql)
+	      (begin
+	        (displayln "Error: could not find alias " alias " in your ~/.jira.yaml")
+	        (exit 2))))
       (displayln "Error: no queries defined in ~/.jira.yaml"))))
 
 (def (gettoken)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/3/serverinfo" .url))
-	   (results (rest-call 'get url (default-headers .basic-auth))))
+	       (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
           (error body))
@@ -68,7 +68,7 @@
 (def (filters)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/3/filter" .url))
-	   (results (rest-call 'get url (default-headers .basic-auth))))
+	       (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
           (error body))
@@ -79,8 +79,8 @@
 (def (transitions issue)
   (let-hash (load-config)
     (let* ((outs [["id" "name" "toname" "tostate"]])
-	   (url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
-	   (results (rest-call 'get url (default-headers .basic-auth))))
+	       (url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
+	       (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
           (error body))
@@ -94,8 +94,8 @@
 (def (transitions-fields issue)
   (let-hash (load-config)
     (let* ((outs [["id" "name" "toname" "tostate"]])
-	   (url (format "~a/rest/api/3/issue/~a/transitions?expand=transitions.fields" .url issue))
-	   (results (rest-call 'get url (default-headers .basic-auth))))
+	       (url (format "~a/rest/api/3/issue/~a/transitions?expand=transitions.fields" .url issue))
+	       (results (rest-call 'get url (default-headers .basic-auth))))
       (with ([status body] results)
         (unless status
           (error body))
@@ -133,9 +133,9 @@
 (def (transition-with-field issue trans field value)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
-	   (data (hash
+	       (data (hash
                   ("update" (hash (field [ (hash ("add" (hash ("comment" value)))) ])))
-		  ("transition" (hash ("id" trans))))))
+		          ("transition" (hash ("id" trans))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -146,7 +146,7 @@
     (let* ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
            (data (hash
                   ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
-        	  ("transition" (hash ("id" trans))))))
+        	      ("transition" (hash ("id" trans))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -201,7 +201,7 @@
           (displayln (hash->list val))
           (displayln val))))
     (let ((url (format "~a/rest/api/3/issue" .url))
-           (assigneeId (hash-get user-to-id (hash-get fields "assignee"))))
+          (assigneeId (hash-get user-to-id (hash-get fields "assignee"))))
       (hash-put! fields "assignee" (hash ("accountId" assigneeId)))
       ;; (hash-put! fields "assignee"
       ;; (fields (hash
@@ -218,8 +218,8 @@
       ;;               ("description" description)
       ;;               ("duedate" duedate))))
 
-;;      (when parent
-;;        (hash-put! fields "parent" (hash ("id" parent))))
+      ;;      (when parent
+      ;;        (hash-put! fields "parent" (hash ("id" parent))))
       ;; (hash-put! fields issuetype (hash ("id" issuetype)))
 
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (hash (fields fields)))))
@@ -241,15 +241,15 @@
         (hash-put! converged k (interpol-from-env (hash-get template k))))
       converged)))
 
-     ;;  (assignee (interpol-from-env (hash-get template "assignee")))
-     ;; (description (interpol-from-env (hash-get template "description")))
-     ;; (duedate (interpol-from-env (hash-get template "duedate")))
-     ;; (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
-     ;; (labels [(interpol-from-env (hash-get template "labels"))])
-     ;; (originalestimate (interpol-from-env (hash-get template "estimate")))
-     ;; (priority (interpol-from-env (hash-get template "priority")))
-     ;; (project (interpol-from-env (hash-get template "project")))
-     ;; (summary (interpol-from-env (hash-get template "summary"))))))
+;;  (assignee (interpol-from-env (hash-get template "assignee")))
+;; (description (interpol-from-env (hash-get template "description")))
+;; (duedate (interpol-from-env (hash-get template "duedate")))
+;; (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
+;; (labels [(interpol-from-env (hash-get template "labels"))])
+;; (originalestimate (interpol-from-env (hash-get template "estimate")))
+;; (priority (interpol-from-env (hash-get template "priority")))
+;; (project (interpol-from-env (hash-get template "project")))
+;; (summary (interpol-from-env (hash-get template "summary"))))))
 
 (def (execute-template template metas project parent)
   (if (not (hash-table? template))
@@ -336,7 +336,7 @@
                                      (yon .?subtask)
                                      .?iconUrl
                                      .?self ] outs))))))))
-        (style-output outs .style))))
+      (style-output outs .style))))
 
 (def (fields)
   (let-hash (load-config)
@@ -798,11 +798,11 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-         (when (hash-table? body)
-           (let-hash body
-             (when .?worklogs
-               (for (worklog .worklogs)
-                 (pi worklog)))))))))
+        (when (hash-table? body)
+          (let-hash body
+            (when .?worklogs
+              (for (worklog .worklogs)
+                (pi worklog)))))))))
 
 (def (members project)
   (let-hash (load-config)
