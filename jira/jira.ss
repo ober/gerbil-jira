@@ -38,6 +38,56 @@
 
 (def program-name "jira")
 
+;;; CLI Command Dispatch Table
+;;; Maps command names to their corresponding function references
+;;; Used instead of eval for security
+(def cli-commands
+  (hash
+   ("assign" assign)
+   ("changelog" changelog)
+   ("comment" comment)
+   ("comment-delete" delete-comment)
+   ("comment-update" update-comment)
+   ("component-create" create-component)
+   ("components" project-components)
+   ("config" config)
+   ("create" create)
+   ("delete-issue" delete-issue)
+   ("fields" fields)
+   ("filters" filters)
+   ("get-project" get-project)
+   ("issue" issue)
+   ("label" label)
+   ("link-create" create-link)
+   ("link-delete" delete-link)
+   ("link-get" get-link)
+   ("link-types" link-types)
+   ("members" members)
+   ("metas" metas)
+   ("myself" myself)
+   ("open" open)
+   ("priorities" priorities)
+   ("project-roles" project-roles)
+   ("project-versions" project-versions)
+   ("projects" projects)
+   ("properties" properties)
+   ("q" q)
+   ("remote-link-create" create-remote-link)
+   ("remote-link-delete" delete-remote-link)
+   ("remote-links" remote-links)
+   ("run" run)
+   ("search" search)
+   ("transition" transition)
+   ("transition-comment" transition-comment)
+   ("transitions" transitions)
+   ("update-field" update-field)
+   ("users" users)
+   ("version-create" create-version)
+   ("work" work)
+   ("watcher-add" watcher-add)
+   ("watcher-del" watcher-del)
+   ("watchers" watchers)))
+
 (def interactives
   (hash
    ("assign" (hash (description: "Assign Issue to user") (usage: "assign <issue id> <user>") (count: 2)))
@@ -95,30 +145,18 @@
     (unless (hash-key? interactives verb)
       (usage))
     (let* ((info (hash-get interactives verb))
-	   (count (hash-get info count:))
-           ;; Map CLI command names to function names
-           (func-name (cond
-                        ((string=? verb "comment-delete") "delete-comment")
-                        ((string=? verb "comment-update") "update-comment")
-                        ((string=? verb "component-create") "create-component")
-                        ((string=? verb "components") "project-components")
-                        ((string=? verb "get-project") "get-project")
-                        ((string=? verb "link-create") "create-link")
-                        ((string=? verb "link-delete") "delete-link")
-                        ((string=? verb "link-get") "get-link")
-                        ((string=? verb "link-types") "link-types")
-                        ((string=? verb "project-roles") "project-roles")
-                        ((string=? verb "project-versions") "project-versions")
-                        ((string=? verb "remote-link-create") "create-remote-link")
-                        ((string=? verb "remote-link-delete") "delete-remote-link")
-                        ((string=? verb "remote-links") "remote-links")
-                        ((string=? verb "version-create") "create-version")
-                        (else verb))))
+	   (count (hash-get info count:)))
       (unless count
 	(set! count 0))
       (unless (= (length args2) count)
 	(usage-verb verb))
-      (apply (eval (string->symbol (string-append "ober/jira/client#" func-name))) args2))))
+      ;; Use dispatch table instead of eval for security
+      (let ((handler (hash-get cli-commands verb)))
+        (if handler
+          (apply handler args2)
+          (begin
+            (displayln "Error: Unknown command: " verb)
+            (exit 2)))))))
 
 (def (usage-verb verb)
   (let ((howto (hash-get interactives verb)))
