@@ -230,16 +230,6 @@
         (hash-put! converged k (interpol-from-env (hash-get template k))))
       converged)))
 
-;;  (assignee (interpol-from-env (hash-get template "assignee")))
-;; (description (interpol-from-env (hash-get template "description")))
-;; (duedate (interpol-from-env (hash-get template "duedate")))
-;; (issuetype (get-issuetype-id (interpol-from-env (hash-get template "issuetype")) metas))
-;; (labels [(interpol-from-env (hash-get template "labels"))])
-;; (originalestimate (interpol-from-env (hash-get template "estimate")))
-;; (priority (interpol-from-env (hash-get template "priority")))
-;; (project (interpol-from-env (hash-get template "project")))
-;; (summary (interpol-from-env (hash-get template "summary"))))))
-
 (def (execute-template template metas project parent)
   (if (not (hash-table? template))
     (begin
