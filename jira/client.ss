@@ -946,7 +946,7 @@
 
 (def (config)
   (let-hash (load-config)
-    (display "What is your Jira password? (will not echo) :")
+    (display "What is your Jira api key? (will not echo) :")
     (let* ((password (read-password ##console-port))
            (cipher (make-aes-256-ctr-cipher))
            (iv (random-bytes (cipher-iv-length cipher)))
