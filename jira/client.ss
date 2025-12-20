@@ -151,7 +151,7 @@
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/3/issue/~a/transitions" .url issue))
            (data (hash
-                  ("update" (hash ("comment" [ (hash ("add" (hash ("body" comment)))) ])))
+                  ("update" (hash ("comment" [ (hash ("add" (hash ("body" (text-to-adf comment))))) ])))
         	      ("transition" (hash ("id" trans))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
@@ -285,15 +285,17 @@
 
 (def (create project summary description)
   (let-hash (load-config)
+    (make-user-to-id-hash)
     (let* ((metas (createmetas .project .basic-auth .url))
            (url (format "~a/rest/api/3/issue" .url))
+           (assignee-id (hash-get user-to-id .user))
            (data (hash
                   ("fields"
                    (hash
-                    ("project" (hash ("id" "10071")))
+                    ("project" (hash ("key" project)))
                     ("summary" summary)
                     ("issuetype" (hash ("id" "3"))) ;; task == 3
-                    ("assignee" (hash ("name" .user)))
+                    ("assignee" (hash ("accountId" assignee-id)))
                     ;;	    ("components" [ (hash ("name" component)) ])
                     ("priority" (hash ("name" "Medium-P3")))
                     ("labels" [
@@ -301,12 +303,21 @@
                                ])
                     ("timetracking" (hash
                                      ("originalEstimate" "10")))
-                    ("description" description)
+                    ("description" (text-to-adf description))
                     ("duedate" "2018-05-15"))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
         (present-item body)))))
+
+(def (get-project-id-by-key project-key basic-auth url)
+  "Fetch project ID from project key for API v3 compatibility"
+  (let ((api-url (format "~a/rest/api/3/project/~a" url project-key)))
+    (with ([status body] (rest-call 'get api-url (default-headers basic-auth)))
+      (unless status
+        (error body))
+      (when (hash-table? body)
+        (hash-ref body 'id)))))
 
 (def (get-project-id name metas)
   (let-hash metas
@@ -449,7 +460,7 @@
 (def (update-comment issue comment-id comment-text)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/3/issue/~a/comment/~a" .url issue comment-id))
-          (data (hash ("body" comment-text))))
+          (data (hash ("body" (text-to-adf comment-text)))))
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -557,7 +568,7 @@
           (data (hash
                  ("name" name)
                  ("description" description)
-                 ("project" project-key)
+                 ("projectId" (get-project-id-by-key project-key .basic-auth .url))
                  ("releaseDate" release-date))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
@@ -566,11 +577,13 @@
 
 (def (create-component project-key name description)
   (let-hash (load-config)
+    (make-user-to-id-hash)
     (let ((url (format "~a/rest/api/3/component" .url))
           (data (hash
                  ("name" name)
                  ("description" description)
-                 ("project" project-key))))
+                 ("project" project-key)
+                 ("leadAccountId" (hash-get user-to-id .user)))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -652,7 +665,7 @@
                          (filter-row-hash
                           (hash
                            ("key" ..key)
-                           ("description" (when .?description (org-table-safe .description)))
+                           ("description" (when .?description (org-table-safe (adf-to-text .description))))
                            ("summary" (when .?summary (org-table-safe .summary)))
                            ("priority" (when (hash-table? .?priority) (hash-ref .?priority 'name)))
                            ("updated" (when .?updated (date->custom .updated)))
@@ -676,12 +689,38 @@
     (car (pregexp-split "@" email))
     email))
 
+(def (text-to-adf text)
+  "Convert plain text to Atlassian Document Format (ADF) required by API v3"
+  (hash
+   ("type" "doc")
+   ("version" 1)
+   ("content" [(hash
+                ("type" "paragraph")
+                ("content" [(hash ("type" "text") ("text" text))]))])))
+
+(def (adf-to-text adf)
+  "Convert Atlassian Document Format (ADF) to plain text for display"
+  (cond
+   ((string? adf) adf)
+   ((not (hash-table? adf)) (if adf (format "~a" adf) ""))
+   (else
+    (let ((type (hash-ref adf 'type #f))
+          (content (hash-ref adf 'content #f))
+          (text (hash-ref adf 'text #f)))
+      (cond
+       (text text)
+       ((and content (list? content))
+        (string-join
+         (map adf-to-text content)
+         (if (equal? type "paragraph") "\n" "")))
+       (else ""))))))
+
 (def (comment issue comment)
   (let-hash (load-config)
     (let* ((url (format "~a/rest/api/3/issue/~a/comment" .url issue))
            (fixed-comment (convert-users-to-ids comment))
            (data (hash
-                  ("body" fixed-comment))))
+                  ("body" (text-to-adf fixed-comment)))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -699,7 +738,7 @@
 
 (def (user pattern)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/user/search?username=~a" .url pattern))
+    (let ((url (format "~a/rest/api/3/user/search?query=~a" .url pattern))
           (outs [[ "User" "Email" "Full Name" "Active?" "Timezone" "Profile" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
@@ -725,7 +764,7 @@
               (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
               (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
               (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
-              (displayln "** Description: " (convert-ids-to-users .?description))
+              (displayln "** Description: " (convert-ids-to-users (adf-to-text .?description)))
               (displayln "** Summary: " (when .?summary .summary))
               (displayln "** Last Viewed: " .?lastViewed)
               (displayln "** Created: " .?created)
@@ -762,7 +801,7 @@
                   (let-hash comment
                     (let-hash .author
                       (displayln "*** Comment: " .?displayName "  on " ..?updated " said:" ))
-                    (displayln (pregexp-replace* "*" (convert-ids-to-users .body) "@")))))
+                    (displayln (pregexp-replace* "*" (convert-ids-to-users (adf-to-text .body)) "@")))))
               (if (hash-table? .?assignee)
                 (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
                 (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (##type-id .?assignee)))))))))))
