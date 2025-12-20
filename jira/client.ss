@@ -211,25 +211,6 @@
     (let ((url (format "~a/rest/api/3/issue" .url))
           (assigneeId (hash-get user-to-id (hash-get fields "assignee"))))
       (hash-put! fields "assignee" (hash ("accountId" assigneeId)))
-      ;; (hash-put! fields "assignee"
-      ;; (fields (hash
-      ;;               ("project" (hash ("id" project)))
-      ;;               ("summary" summary)
-      ;;               ("issuetype" (hash ("id" issuetype)))
-      ;;               ("assignee" (hash ("accountId" (hash-get user-to-id assignee))))
-      ;;               ("priority" (hash ("name" priority)))
-      ;;               ("customfield_17245" (hash ("id" "21451")))
-      ;;               ("customfield_15014" (hash ("id" "17048")))
-      ;;               ("labels" [])
-      ;;               ("timetracking" (hash
-      ;;                                ("originalEstimate" originalestimate)))
-      ;;               ("description" description)
-      ;;               ("duedate" duedate))))
-
-      ;;      (when parent
-      ;;        (hash-put! fields "parent" (hash ("id" parent))))
-      ;; (hash-put! fields issuetype (hash ("id" issuetype)))
-
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string (hash (fields fields)))))
         (unless status
           (error body))
