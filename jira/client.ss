@@ -12,6 +12,7 @@
   :std/iter
   :std/misc/list
   :std/misc/ports
+  :std/net/uri
   :std/pregexp
   :std/srfi/13
   :std/sugar
@@ -26,11 +27,46 @@
 
 (def config-file "~/.jira.yaml")
 (def program-name "jira")
+(def keys-dir (path-expand "~/.config/gerbil/keys"))
+(def key-file (path-expand "jira.key" keys-dir))
 
 (def user-to-id #f)
 (def id-to-user #f)
 
+;; Security: Ensure directory exists with restricted permissions
+(def (ensure-keys-dir!)
+  (unless (file-exists? keys-dir)
+    (create-directory* keys-dir)
+    (##shell-command (format "chmod 700 ~a" keys-dir))))
+
+;; Security: Save key to separate file with restricted permissions
+(def (save-key-to-file! key-bytes)
+  (ensure-keys-dir!)
+  (let ((key-b64 (u8vector->base64-string key-bytes)))
+    (with-output-to-file [path: key-file create: 'maybe truncate: #t]
+      (lambda () (display key-b64)))
+    (##shell-command (format "chmod 400 ~a" key-file))
+    (displayln (format "Key saved to ~a (mode 0400)" key-file))))
+
+;; Security: Load key from separate file
+(def (load-key-from-file)
+  (unless (file-exists? key-file)
+    (error (format "Key file not found: ~a. Run 'config' command first." key-file)))
+  (base64-string->u8vector (read-file-string key-file)))
+
+;; Security: Check file permissions (warn if too permissive)
+(def (check-file-permissions! file)
+  (when (file-exists? file)
+    (let* ((info (file-info file))
+           (mode (file-info-mode info)))
+      (when (> (bitwise-and mode #o077) 0)
+        (displayln (format "WARNING: ~a has insecure permissions. Run: chmod 600 ~a" file file))))))
+
 (def (load-config)
+  ;; SECURITY: Check file permissions
+  (check-file-permissions! config-file)
+  (check-file-permissions! key-file)
+
   (let ((config (hash)))
     ;;(load-user-hashes)
     (hash-for-each
@@ -47,7 +83,12 @@
                                   (bytes->string (base64-decode .secrets))
                                 read-json))))
           (let-hash secrets-json
-            (let ((password (get-password-from-config .key .iv .password)))
+            ;; SECURITY FIX: Check if key is in secrets (legacy) or separate file (secure)
+            (let ((password (if .?key
+                              ;; Legacy format: key in config (insecure, warn user)
+                              (get-password-from-config-legacy .key .iv .password)
+                              ;; New format: key in separate file (secure)
+                              (get-password-from-config .iv .password))))
               (hash-put! config 'basic-auth (make-basic-auth ..?user password)))))))
     config))
 
@@ -616,42 +657,46 @@
                       sf
                       df)))
       (let lp ((offset 0))
-        (let ((data (hash
-                     ("maxResults" 100)
-                     ("startAt" offset)
-                     ("jql" query))))
+        ;; New /search/jql endpoint uses query parameters, not POST body
+        (let ((search-url (format "~a?jql=~a&maxResults=100&startAt=~a"
+                                  url
+                                  (uri-encode query)
+                                  offset)))
           (with ([ status body ]
-                 (rest-call 'post (format "~a?startAt=~a" url offset) (default-headers .basic-auth) (json-object->string data) 3))
+                 (rest-call 'get search-url (default-headers .basic-auth)))
             (unless status
               (error body))
             (if (hash-table? body)
               (let-hash body
-                (set! outs (cons headers outs))
-                (for (iss .issues)
-                  (let-hash iss
-                    (dp (hash->list .fields))
-                    (let-hash .fields
-                      (set! outs
-                        (cons
-                         (filter-row-hash
-                          (hash
-                           ("key" ..key)
-                           ("description" (when .?description (org-table-safe (adf-to-text .description))))
-                           ("summary" (when .?summary (org-table-safe .summary)))
-                           ("priority" (when (hash-table? .?priority) (hash-ref .?priority 'name)))
-                           ("updated" (when .?updated (date->custom .updated)))
-                           ("labels" .?labels)
-                           ("status" (when (hash-table? .?status) (hash-ref .status 'name)))
-                           ("assignee" (when (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
-                           ("creator" (when (hash-table? .?creator) (let-hash .creator (email-short .?emailAddress))))
-                           ("reporter" (when (hash-table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
-                           ("issuetype" (when (hash-table? .?issuetype) (let-hash .issuetype .?name)))
-                           ("project" (when (hash-table? .?project) (let-hash .project .?name)))
-                           ("watchers" (hash-ref .watches 'watchCount))
-                           ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-                (when (> .?total (+ offset .maxResults))
-                  (lp (+ offset .maxResults))))))))
-      (style-output outs "org-mode"))))
+                (pi body)))))))))
+                ;;           (set! outs (cons headers outs))
+      ;;           (for (iss .issues)
+      ;;             (let-hash iss
+      ;;               (dp (hash->list .fields))
+      ;;               (let-hash .fields
+      ;;                 (set! outs
+      ;;                   (cons
+      ;;                    (filter-row-hash
+      ;;                     (hash
+      ;;                      ("key" ..key)
+      ;;                      ("description" (when .?description (org-table-safe (adf-to-text .description))))
+      ;;                      ("summary" (when .?summary (org-table-safe .summary)))
+      ;;                      ("priority" (when (hash-table? .?priority) (hash-ref .?priority 'name)))
+      ;;                      ("updated" (when .?updated (date->custom .updated)))
+      ;;                      ("labels" .?labels)
+      ;;                      ("status" (when (hash-table? .?status) (hash-ref .status 'name)))
+      ;;                      ("assignee" (when (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
+      ;;                      ("creator" (when (hash-table? .?creator) (let-hash .creator (email-short .?emailAddress))))
+      ;;                      ("reporter" (when (hash-table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
+      ;;                      ("issuetype" (when (hash-table? .?issuetype) (let-hash .issuetype .?name)))
+      ;;                      ("project" (when (hash-table? .?project) (let-hash .project .?name)))
+      ;;                      ("watchers" (hash-ref .watches 'watchCount))
+      ;;                      ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
+      ;;           ;; API v3 /search/jql doesn't return maxResults, use length of issues
+      ;;           (let ((returned-count (length .issues)))
+      ;;             (when (and .?total (> .total (+ offset returned-count)) (> returned-count 0))
+      ;;               (lp (+ offset returned-count))))))))
+      ;; (style-output outs "org-mode"))))
 
 (def (email-short email)
   "Return the username left of the @"
@@ -954,20 +999,35 @@
            (encrypted-password (encrypt cipher key iv password))
            (enc-pass-store (u8vector->base64-string encrypted-password))
            (iv-store (u8vector->base64-string iv))
-           (key-store (u8vector->base64-string key))
-           ;; Use JSON encoding instead of object->u8vector for security
-           ;; This prevents arbitrary code execution during config loading
+           ;; SECURITY FIX: Store key in separate file, NOT in config
+           ;; Only store ciphertext and IV in the config file
            (secrets-hash (hash
                           ("password" enc-pass-store)
-                          ("iv" iv-store)
-                          ("key" key-store)))
+                          ("iv" iv-store)))
            (secrets (base64-encode (string->bytes (json-object->string secrets-hash)))))
-
+      ;; Save the key to a separate file with restricted permissions
+      (save-key-to-file! key)
+      (displayln "")
       (displayln "Add the following lines to your " config-file)
       (displayln "")
-      (displayln "secrets: " secrets))))
+      (displayln "secrets: " secrets)
+      (displayln "")
+      (displayln "SECURITY NOTE: Your encryption key is stored separately in " key-file))))
 
-(def (get-password-from-config key iv password)
+;; SECURITY FIX: Load key from separate file instead of config
+(def (get-password-from-config iv password)
+  (let ((key (load-key-from-file)))
+    (bytes->string
+     (decrypt
+      (make-aes-256-ctr-cipher)
+      key
+      (base64-string->u8vector iv)
+      (base64-string->u8vector password)))))
+
+;; Legacy function for backward compatibility with old config format
+(def (get-password-from-config-legacy key iv password)
+  (displayln "WARNING: Using legacy config format with key stored in config file.")
+  (displayln "         Please run 'config' command to upgrade to secure key storage.")
   (bytes->string
    (decrypt
     (make-aes-256-ctr-cipher)
