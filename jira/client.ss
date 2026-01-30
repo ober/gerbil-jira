@@ -232,7 +232,6 @@
       (style-output out .style))))
 
 (def (issuetype type)
-  (displayln "here: " type)
   (let-hash (load-config)
     (let ((url (format "~a/rest/api/3/issuetype/~a" .url type)))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
@@ -315,8 +314,7 @@
                                ])
                     ("timetracking" (hash
                                      ("originalEstimate" "10")))
-                    ("description" (text-to-adf description))
-                    ("duedate" "2018-05-15"))))))
+                    ("description" (text-to-adf description)))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
@@ -656,6 +654,7 @@
                              (length>n? sf 1))
                       sf
                       df)))
+      (set! outs (cons headers outs))
       (let lp ((offset 0))
         ;; New /search/jql endpoint uses query parameters, not POST body
         (let ((search-url (format "~a?jql=~a&maxResults=100&startAt=~a"
@@ -666,37 +665,36 @@
                  (rest-call 'get search-url (default-headers .basic-auth)))
             (unless status
               (error body))
-            (if (hash-table? body)
+            (when (hash-table? body)
               (let-hash body
-                (pi body)))))))))
-                ;;           (set! outs (cons headers outs))
-      ;;           (for (iss .issues)
-      ;;             (let-hash iss
-      ;;               (dp (hash->list .fields))
-      ;;               (let-hash .fields
-      ;;                 (set! outs
-      ;;                   (cons
-      ;;                    (filter-row-hash
-      ;;                     (hash
-      ;;                      ("key" ..key)
-      ;;                      ("description" (when .?description (org-table-safe (adf-to-text .description))))
-      ;;                      ("summary" (when .?summary (org-table-safe .summary)))
-      ;;                      ("priority" (when (hash-table? .?priority) (hash-ref .?priority 'name)))
-      ;;                      ("updated" (when .?updated (date->custom .updated)))
-      ;;                      ("labels" .?labels)
-      ;;                      ("status" (when (hash-table? .?status) (hash-ref .status 'name)))
-      ;;                      ("assignee" (when (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress))))
-      ;;                      ("creator" (when (hash-table? .?creator) (let-hash .creator (email-short .?emailAddress))))
-      ;;                      ("reporter" (when (hash-table? .?reporter) (let-hash .reporter (email-short .?emailAddress))))
-      ;;                      ("issuetype" (when (hash-table? .?issuetype) (let-hash .issuetype .?name)))
-      ;;                      ("project" (when (hash-table? .?project) (let-hash .project .?name)))
-      ;;                      ("watchers" (hash-ref .watches 'watchCount))
-      ;;                      ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))
-      ;;           ;; API v3 /search/jql doesn't return maxResults, use length of issues
-      ;;           (let ((returned-count (length .issues)))
-      ;;             (when (and .?total (> .total (+ offset returned-count)) (> returned-count 0))
-      ;;               (lp (+ offset returned-count))))))))
-      ;; (style-output outs "org-mode"))))
+                (when (list? .?issues)
+                  (for (iss .issues)
+                    (let-hash iss
+                      (when (hash-table? .?fields)
+                        (let-hash .fields
+                          (set! outs
+                            (cons
+                             (filter-row-hash
+                              (hash
+                               ("key" ..key)
+                               ("description" (if .?description (org-table-safe (adf-to-text .description)) ""))
+                               ("summary" (if .?summary (org-table-safe .summary) ""))
+                               ("priority" (if (hash-table? .?priority) (hash-ref .priority 'name) ""))
+                               ("updated" (if .?updated (date->custom .updated) ""))
+                               ("labels" (if (list? .?labels) (string-join (map (lambda (x) (format "~a" x)) .?labels) ",") ""))
+                               ("status" (if (hash-table? .?status) (hash-ref .status 'name) ""))
+                               ("assignee" (if (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress)) ""))
+                               ("creator" (if (hash-table? .?creator) (let-hash .creator (email-short .?emailAddress)) ""))
+                               ("reporter" (if (hash-table? .?reporter) (let-hash .reporter (email-short .?emailAddress)) ""))
+                               ("issuetype" (if (hash-table? .?issuetype) (let-hash .issuetype .?name) ""))
+                               ("project" (if (hash-table? .?project) (let-hash .project .?name) ""))
+                               ("watchers" (if (hash-table? .?watches) (hash-ref .watches 'watchCount) ""))
+                               ("url" (format "~a/browse/~a" ....url ..key))) headers) outs)))))))
+                ;; Paginate: fetch next page if more results exist
+                (let ((returned-count (length .issues)))
+                  (when (and .?total (> .total (+ offset returned-count)) (> returned-count 0))
+                    (lp (+ offset returned-count)))))))))
+      (style-output outs .style))))
 
 (def (email-short email)
   "Return the username left of the @"
@@ -772,16 +770,13 @@
       (let-hash issue
         (when (and .?fields
                    (hash-table? .fields))
-          (begin
-            (let-hash .fields
+          (let-hash .fields
               (displayln "** Summary: " .summary)
-              (dp (format "XXX: creator: ~a~%" (hash->list .creator)))
-              (when .?status (let-hash .?status (displayln "** Description: " .?description) (displayln "** State: " .?name)))
+              (when .?status (let-hash .?status (displayln "** State: " .?name)))
               (when .?priority (let-hash .?priority (displayln "** Priority: " .?name)))
               (when .?issuetype (let-hash .?issuetype   (displayln "** Issue Type: " .?name)))
               (displayln "** Labels: " (if (list? .?labels) (string-join .?labels ",") .?labels))
               (displayln "** Description: " (convert-ids-to-users (adf-to-text .?description)))
-              (displayln "** Summary: " (when .?summary .summary))
               (displayln "** Last Viewed: " .?lastViewed)
               (displayln "** Created: " .?created)
               (let-hash .status (displayln "** Status: " .?name))
@@ -820,7 +815,7 @@
                     (displayln (pregexp-replace* "*" (convert-ids-to-users (adf-to-text .body)) "@")))))
               (if (hash-table? .?assignee)
                 (let-hash .assignee (displayln "** Assignee: " .?displayName " " .?accountId " " .?emailAddress))
-                (displayln (format "XXX: assignee: ~a type: ~a" .?assignee (##type-id .?assignee)))))))))))
+                (displayln "** Assignee: unassigned"))))))))
 
 (def (org-table-safe str)
   (if (string? str)
@@ -845,7 +840,7 @@
         (for (priority body)
           (let-hash priority
             (set! outs (cons [ .?name .?id .?description .?statusColor .?self .?iconUrl ] outs))))
-        (style-output outs)))))
+        (style-output outs .style)))))
 
 (def (index-summary)
   (let-hash (load-config)
@@ -920,23 +915,27 @@
   "Fetch users, or read from local cache"
   (let ((user-list "~/.jira-users")
         (users []))
-    (if (modified-since? user-list (* 12 24 3600))
-      (set! users (read-obj-from-file user-list))
-      (begin
-        (let-hash (load-config)
-          (let ((url (format "~a/rest/api/3/users/search" .url)))
-            (let lp ((offset 0))
-              (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
-                (unless status
-                  (error body))
-                (when (and
-                        (list? body)
-                        (length>n? body 0))
-                  (for (user body)
-                    (when (hash-table? user)
-                      (set! users (cons user users))))
-                  (lp (+ offset 1000))))))
-          (write-obj-to-file user-list users))))
+    ;; Try reading from cache if fresh
+    (when (modified-since? user-list (* 12 24 3600))
+      (let ((cached (read-json-from-file user-list)))
+        (when (list? cached)
+          (set! users cached))))
+    ;; If no cached data, fetch from API
+    (when (null? users)
+      (let-hash (load-config)
+        (let ((url (format "~a/rest/api/3/users/search" .url)))
+          (let lp ((offset 0))
+            (with ([status body] (rest-call 'get (format "~a?startAt=~a&maxResults=1000" url offset) (default-headers .basic-auth)))
+              (unless status
+                (error body))
+              (when (and
+                      (list? body)
+                      (length>n? body 0))
+                (for (user body)
+                  (when (hash-table? user)
+                    (set! users (cons user users))))
+                (lp (+ offset 1000)))))))
+      (write-json-to-file user-list users))
     users))
 
 (def (dump-users-yaml users)
@@ -944,10 +943,7 @@
   (let ((user-list "~/.jira-users.yaml"))
     (unless (list? users)
       (error "Users is not list!"))
-    (try
-     (yaml-dump user-list users)
-     (catch (e)
-       (raise e)))))
+    (yaml-dump user-list users)))
 
 (def (configuration)
   "Return the configuration of the Jira server"
@@ -968,11 +964,14 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (for (project body)
-          (when (hash-table? project)
-            (let-hash project
-              (set! outs (cons [ .?id .?key .?name .?projectTypeKey ] outs))))))
-      (style-output outs))))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?values)
+              (for (project .values)
+                (when (hash-table? project)
+                  (let-hash project
+                    (set! outs (cons [ .?id .?key .?name .?projectTypeKey ] outs)))))))))
+      (style-output outs .style))))
 
 (def (properties issue)
   (let-hash (load-config)
@@ -1037,7 +1036,7 @@
 
 (def (red txt)
   "Return a red version of txt"
-  (format "\\e[7;37;41m~a\\e[o;37;40m" txt))
+  (format "\x1b;[7;37;41m~a\x1b;[0;37;40m" txt))
 
 (def (open issue)
   "Open Jira issue in browser. Issue ID is validated to prevent shell injection."
@@ -1072,25 +1071,25 @@
   "Make users hash and set global user-to-id"
   (unless user-to-id
     (set! user-to-id (hash))
-    (set! id-to-user (hash)))
-  (let ((users (users-hash)))
-    (for (user users)
-      (let-hash user
-        (let ((short (email-short .?emailAddress)))
-          (hash-put! user-to-id short .?accountId)
-          (hash-put! id-to-user .?accountId short))))))
+    (set! id-to-user (hash))
+    (let ((users (users-hash)))
+      (for (user users)
+        (let-hash user
+          (let ((short (email-short .?emailAddress)))
+            (hash-put! user-to-id short .?accountId)
+            (hash-put! id-to-user .?accountId short)))))))
 
 (def (convert-ids-to-users str)
-  (when (string? str)
-    (unless (and
-              id-to-user
-              user-to-id)
-      (make-user-to-id-hash))
-    (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
-          (delim "~accountid:")
-          (fmt " @~a")
-          (fstr (pregexp-replace* "\\]\\[" str "] [")))
-      (hash-interpol re delim fstr id-to-user fmt))))
+  (if (string? str)
+    (begin
+      (unless (and id-to-user user-to-id)
+        (make-user-to-id-hash))
+      (let ((re "(?:^|\\s)(?:\\[\\~accountid:)([0-9A-Za-z-:]+)(?:\\])")
+            (delim "~accountid:")
+            (fmt " @~a")
+            (fstr (pregexp-replace* "\\]\\[" str "] [")))
+        (hash-interpol re delim fstr id-to-user fmt)))
+    ""))
 
 (def (convert-users-to-ids str)
   (unless (and
@@ -1103,8 +1102,7 @@
     (hash-interpol re delim str user-to-id fmt)))
 
 (def (convert-names str)
-  (let ((results ""))
-    (pregexp-replace* "(\\s|^)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]")))
+  (pregexp-replace* "(\\s|^)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]"))
 
 (def (default-headers basic)
   [
