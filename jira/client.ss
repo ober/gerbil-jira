@@ -37,7 +37,9 @@
 (def (ensure-keys-dir!)
   (unless (file-exists? keys-dir)
     (create-directory* keys-dir)
-    (##shell-command (format "chmod 700 ~a" keys-dir))))
+    (let ((proc (open-process [path: "chmod" arguments: ["700" keys-dir]])))
+      (process-status proc)
+      (close-port proc))))
 
 ;; Security: Save key to separate file with restricted permissions
 (def (save-key-to-file! key-bytes)
@@ -45,7 +47,9 @@
   (let ((key-b64 (u8vector->base64-string key-bytes)))
     (with-output-to-file [path: key-file create: 'maybe truncate: #t]
       (lambda () (display key-b64)))
-    (##shell-command (format "chmod 400 ~a" key-file))
+    (let ((proc (open-process [path: "chmod" arguments: ["400" key-file]])))
+      (process-status proc)
+      (close-port proc))
     (displayln (format "Key saved to ~a (mode 0400)" key-file))))
 
 ;; Security: Load key from separate file
@@ -114,14 +118,20 @@
 
 (def (filters)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/3/filter" .url))
-	       (results (rest-call 'get url (default-headers .basic-auth))))
-      (with ([status body] results)
+    (let ((url (format "~a/rest/api/3/filter" .url))
+          (outs [[ "Id" "Name" "Owner" "JQL" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
         (when (list? body)
           (for (filter body)
-            (pi filter)))))))
+            (when (hash-table? filter)
+              (let-hash filter
+                (let ((owner-name (if (hash-table? .?owner)
+                                    (hash-ref .owner 'displayName)
+                                    "N/A")))
+                  (set! outs (cons [ (format "~a" .?id) .?name owner-name (or .?jql "") ] outs))))))))
+      (style-output outs .style))))
 
 (def (transitions issue)
   (let-hash (load-config)
@@ -175,7 +185,7 @@
       (with ([ status body ] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Transitioned " issue " to state " trans)))))
 
 (def (transition-with-field issue trans field value)
   (let-hash (load-config)
@@ -197,7 +207,7 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Transitioned " issue " to state " trans " with comment")))))
 
 (def (watcher-del issue name)
   (let-hash (load-config)
@@ -206,7 +216,7 @@
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Removed watcher " name " from " issue)))))
 
 (def (watcher-add issue name)
   (let-hash (load-config)
@@ -216,7 +226,7 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string add)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Added watcher " name " to " issue)))))
 
 (def (watchers issue)
   (let-hash (load-config)
@@ -307,18 +317,19 @@
                     ("summary" summary)
                     ("issuetype" (hash ("id" "3"))) ;; task == 3
                     ("assignee" (hash ("accountId" assignee-id)))
-                    ;;	    ("components" [ (hash ("name" component)) ])
                     ("priority" (hash ("name" "Medium-P3")))
-                    ("labels" [
-                               ;; (format "~a-is-working-on" .user) ;; some default tag here
-                               ])
+                    ("labels" [])
                     ("timetracking" (hash
                                      ("originalEstimate" "10")))
                     ("description" (text-to-adf description)))))))
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (if (hash-table? body)
+          (let-hash body
+            (displayln "Created: " .?key)
+            (displayln "URL:     " .?self))
+          (present-item body))))))
 
 (def (get-project-id-by-key project-key basic-auth url)
   "Fetch project ID from project key for API v3 compatibility"
@@ -408,7 +419,7 @@
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Added label '" label "' to " issue)))))
 
 (def (update-field issue field content)
   (let-hash (load-config)
@@ -420,7 +431,7 @@
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Updated field '" field "' on " issue)))))
 
 (def (delete-issue issue)
   (let-hash (load-config)
@@ -428,7 +439,7 @@
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Deleted issue " issue)))))
 
 (def (get-attachment attachment-id)
   (let-hash (load-config)
@@ -436,7 +447,14 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (hash-table? body)
+          (let-hash body
+            (displayln "Filename:  " .?filename)
+            (displayln "Size:      " .?size)
+            (displayln "Mime Type: " .?mimeType)
+            (displayln "Author:    " (if (hash-table? .?author) (hash-ref .author 'displayName) "N/A"))
+            (displayln "Created:   " .?created)
+            (displayln "Content:   " .?content)))))))
 
 (def (changelog issue)
   (let-hash (load-config)
@@ -465,7 +483,7 @@
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Deleted comment " comment-id " from " issue)))))
 
 (def (update-comment issue comment-id comment-text)
   (let-hash (load-config)
@@ -474,7 +492,7 @@
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Updated comment " comment-id " on " issue)))))
 
 (def (create-link link-type inward-issue outward-issue)
   (let-hash (load-config)
@@ -486,7 +504,7 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Created link '" link-type "' from " inward-issue " to " outward-issue)))))
 
 (def (delete-link link-id)
   (let-hash (load-config)
@@ -494,7 +512,7 @@
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Deleted link " link-id)))))
 
 (def (get-link link-id)
   (let-hash (load-config)
@@ -502,7 +520,12 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (hash-table? body)
+          (let-hash body
+            (displayln "Link ID:   " .?id)
+            (displayln "Type:      " (if (hash-table? .?type) (hash-ref .type 'name) "N/A"))
+            (displayln "Inward:    " (if (hash-table? .?inwardIssue) (hash-ref .inwardIssue 'key) "N/A"))
+            (displayln "Outward:   " (if (hash-table? .?outwardIssue) (hash-ref .outwardIssue 'key) "N/A"))))))))
 
 (def (link-types)
   (let-hash (load-config)
@@ -525,7 +548,15 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (hash-table? body)
+          (let-hash body
+            (displayln "Display Name: " .?displayName)
+            (displayln "Email:        " .?emailAddress)
+            (displayln "Account ID:   " .?accountId)
+            (displayln "Active:       " (if .?active "Yes" "No"))
+            (displayln "Timezone:     " .?timeZone)
+            (displayln "Account Type: " .?accountType)
+            (displayln "Locale:       " .?locale)))))))
 
 (def (get-project project-key)
   (let-hash (load-config)
@@ -533,15 +564,29 @@
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (hash-table? body)
+          (let-hash body
+            (displayln "Name:        " .?name)
+            (displayln "Key:         " .?key)
+            (displayln "Id:          " .?id)
+            (displayln "Type:        " .?projectTypeKey)
+            (displayln "Description: " .?description)
+            (displayln "Lead:        " (if (hash-table? .?lead) (hash-ref .lead 'displayName) "N/A"))
+            (displayln "URL:         " .?self)))))))
 
 (def (project-roles project-key)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/project/~a/role" .url project-key)))
+    (let ((url (format "~a/rest/api/3/project/~a/role" .url project-key))
+          (outs [[ "Role" "URL" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (when (hash-table? body)
+          (hash-for-each
+           (lambda (k v)
+             (set! outs (cons [ (format "~a" k) (format "~a" v) ] outs)))
+           body)))
+      (style-output outs .style))))
 
 (def (project-versions project-key)
   (let-hash (load-config)
@@ -583,7 +628,10 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (if (hash-table? body)
+          (let-hash body
+            (displayln "Created version '" .?name "' (id: " .?id ") in " project-key))
+          (displayln "Created version '" name "' in " project-key))))))
 
 (def (create-component project-key name description)
   (let-hash (load-config)
@@ -597,7 +645,10 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (if (hash-table? body)
+          (let-hash body
+            (displayln "Created component '" .?name "' (id: " .?id ") in " project-key))
+          (displayln "Created component '" name "' in " project-key))))))
 
 (def (remote-links issue)
   (let-hash (load-config)
@@ -628,7 +679,7 @@
       (with ([status body] (rest-call 'post api-url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Created remote link '" title "' on " issue)))))
 
 (def (delete-remote-link issue link-id)
   (let-hash (load-config)
@@ -636,7 +687,7 @@
       (with ([status body] (rest-call 'delete url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Deleted remote link " link-id " from " issue)))))
 
 (def (search query)
   (let-hash (load-config)
@@ -738,7 +789,10 @@
       (with ([status body] (rest-call 'post url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (if (hash-table? body)
+          (let-hash body
+            (displayln "Comment added to " issue " (id: " .?id ")"))
+          (displayln "Comment added to " issue))))))
 
 (def (assign issue user)
   (let-hash (load-config)
@@ -748,7 +802,7 @@
       (with ([status body] (rest-call 'put url (default-headers .basic-auth) (json-object->string data)))
         (unless status
           (error body))
-        (present-item body)))))
+        (displayln "Assigned " issue " to " user)))))
 
 (def (user pattern)
   (let-hash (load-config)
@@ -852,7 +906,8 @@
 
 (def (work issue)
   (let-hash (load-config)
-    (let ((url (format "~a/rest/api/3/issue/~a/worklog" .url issue)))
+    (let ((url (format "~a/rest/api/3/issue/~a/worklog" .url issue))
+          (outs [[ "Author" "Started" "Time Spent" "Comment" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
@@ -860,15 +915,35 @@
           (let-hash body
             (when .?worklogs
               (for (worklog .worklogs)
-                (pi worklog)))))))))
+                (when (hash-table? worklog)
+                  (let-hash worklog
+                    (let ((author-name (if (hash-table? .?author)
+                                         (hash-ref .author 'displayName)
+                                         "Unknown")))
+                      (set! outs (cons [ author-name
+                                         (or .?started "")
+                                         (or .?timeSpent "")
+                                         (if .?comment (adf-to-text .comment) "") ] outs))))))))))
+      (style-output outs .style))))
 
 (def (members project)
   (let-hash (load-config)
-    (let* ((url (format "~a/rest/api/3/group/member?groupname=~a&includeInactiveUsers=false" .url project)))
+    (let* ((url (format "~a/rest/api/3/group/member?groupname=~a&includeInactiveUsers=false" .url project))
+           (outs [[ "Name" "Email" "Active?" "Account Type" ]]))
       (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
         (unless status
           (error body))
-        (pi body)))))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?values)
+              (for (member .values)
+                (when (hash-table? member)
+                  (let-hash member
+                    (set! outs (cons [ (or .?displayName "N/A")
+                                       (or .?emailAddress "N/A")
+                                       (if .?active "Yes" "No")
+                                       (or .?accountType "N/A") ] outs)))))))))
+      (style-output outs .style))))
 
 (def (users)
   (let-hash (load-config)
@@ -1103,6 +1178,151 @@
 
 (def (convert-names str)
   (pregexp-replace* "(\\s|^)@([a-zA-Z0-9]+)" str "\\1\\[\\~\\2\\]"))
+
+(def (statuses)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/status" .url))
+          (outs [[ "Id" "Name" "Description" "Category" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (st body)
+            (when (hash-table? st)
+              (let-hash st
+                (let ((cat-name (if (hash-table? .?statusCategory)
+                                  (hash-ref .statusCategory 'name)
+                                  "N/A")))
+                  (set! outs (cons [ (format "~a" .?id) .?name (or .?description "") cat-name ] outs))))))))
+      (style-output outs .style))))
+
+(def (resolutions)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/resolution" .url))
+          (outs [[ "Id" "Name" "Description" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (res body)
+            (when (hash-table? res)
+              (let-hash res
+                (set! outs (cons [ (format "~a" .?id) .?name (or .?description "") ] outs)))))))
+      (style-output outs .style))))
+
+(def (server-info)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/serverInfo" .url)))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (displayln "Server Title:  " .?serverTitle)
+            (displayln "Base URL:      " .?baseUrl)
+            (displayln "Version:       " .?version)
+            (displayln "Build Number:  " .?buildNumber)
+            (displayln "Build Date:    " .?buildDate)
+            (displayln "Server Time:   " .?serverTime)
+            (displayln "Deploy Type:   " .?deploymentType)
+            (displayln "Scm Info:      " .?scmInfo)))))))
+
+(def (groups (query ""))
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/groups/picker?query=~a&maxResults=50" .url (uri-encode query)))
+          (outs [[ "Name" "Group Id" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?groups)
+              (for (group .groups)
+                (when (hash-table? group)
+                  (let-hash group
+                    (set! outs (cons [ .?name (or .?groupId "") ] outs)))))))))
+      (style-output outs .style))))
+
+(def (dashboards)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/api/3/dashboard" .url))
+          (outs [[ "Id" "Name" "Owner" "View" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?dashboards)
+              (for (dash .dashboards)
+                (when (hash-table? dash)
+                  (let-hash dash
+                    (let ((owner-name (if (hash-table? .?owner)
+                                        (hash-ref .owner 'displayName)
+                                        "N/A")))
+                      (set! outs (cons [ (format "~a" .?id) .?name owner-name (or .?view "") ] outs))))))))))
+      (style-output outs .style))))
+
+(def (boards)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/agile/1.0/board" .url))
+          (outs [[ "Id" "Name" "Type" "Project" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?values)
+              (for (board .values)
+                (when (hash-table? board)
+                  (let-hash board
+                    (let ((project-key (if (hash-table? .?location)
+                                         (hash-get .location 'projectKey)
+                                         "N/A")))
+                      (set! outs (cons [ (format "~a" .?id) .?name (or .?type "") project-key ] outs))))))))))
+      (style-output outs .style))))
+
+(def (sprints board-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/agile/1.0/board/~a/sprint" .url board-id))
+          (outs [[ "Id" "Name" "State" "Start Date" "End Date" "Goal" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?values)
+              (for (sprint .values)
+                (when (hash-table? sprint)
+                  (let-hash sprint
+                    (set! outs (cons [ (format "~a" .?id)
+                                       .?name
+                                       (or .?state "")
+                                       (or .?startDate "")
+                                       (or .?endDate "")
+                                       (or .?goal "") ] outs)))))))))
+      (style-output outs .style))))
+
+(def (sprint-issues sprint-id)
+  (let-hash (load-config)
+    (let ((url (format "~a/rest/agile/1.0/sprint/~a/issue" .url sprint-id))
+          (outs [[ "Key" "Summary" "Status" "Assignee" "Priority" ]]))
+      (with ([status body] (rest-call 'get url (default-headers .basic-auth)))
+        (unless status
+          (error body))
+        (when (hash-table? body)
+          (let-hash body
+            (when (list? .?issues)
+              (for (iss .issues)
+                (when (hash-table? iss)
+                  (let-hash iss
+                    (when (hash-table? .?fields)
+                      (let-hash .fields
+                        (set! outs (cons [ ..key
+                                           (or .?summary "")
+                                           (if (hash-table? .?status) (hash-ref .status 'name) "")
+                                           (if (hash-table? .?assignee) (let-hash .assignee (email-short .?emailAddress)) "")
+                                           (if (hash-table? .?priority) (hash-ref .priority 'name) "") ] outs)))))))))))
+      (style-output outs .style))))
 
 (def (default-headers basic)
   [
