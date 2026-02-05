@@ -23,7 +23,7 @@
 (export #t)
 
 (declare (not optimize-dead-definitions))
-(def version "0.23")
+(def version "0.50")
 
 (def config-file "~/.jira.yaml")
 (def program-name "jira")
