@@ -2,8 +2,8 @@
 ;;; Jira CLI — Projects, Versions, Components, Categories, Roles
 
 (import
-  :ober/jira/api
-  :ober/jira/format
+  :jira/jira/api
+  :jira/jira/format
   :std/format
   :std/iter
   :std/sugar

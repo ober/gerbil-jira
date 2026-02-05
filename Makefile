@@ -1,34 +1,14 @@
-PROJECT := jira
-ARCH := $(shell uname -m)
-PWD := $(shell pwd)
-GERBIL_HOME := /opt/gerbil
-DOCKER_IMAGE := "gerbil/gerbilxx:$(ARCH)-master"
-UID := $(shell id -u)
-GID := $(shell id -g)
+BINARY = .gerbil/bin/jira
+OPENSSL_RPATH = /home/linuxbrew/.linuxbrew/opt/openssl@3/lib
 
-default: linux-static-docker
+.PHONY: build clean
 
-check-root:
-	@if [ "${UID}" -eq 0 ]; then \
-	git config --global --add safe.directory /src; \
-	fi
-
-deps:
-	$(GERBIL_HOME)/bin/gxpkg install github.com/mighty-gerbils/gerbil-libyaml
-
-build: deps check-root
-	$(GERBIL_HOME)/bin/gxpkg link $(PROJECT) /src || true
-	$(GERBIL_HOME)/bin/gxpkg build -R $(PROJECT)
-
-linux-static-docker: clean
-	docker run -t \
-	-u "$(UID):$(GID)" \
-	-v $(PWD):/src:z \
-	$(DOCKER_IMAGE) \
-	make -C /src build
+build:
+	gerbil build
+	patchelf --set-rpath $(OPENSSL_RPATH) $(BINARY)
 
 clean:
-	rm -rf .gerbil manifest.ss
+	gerbil clean
 
 install:
-	mv .gerbil/bin/$(PROJECT) /usr/local/bin/$(PROJECT)
+	sudo cp $(BINARY) /usr/local/bin

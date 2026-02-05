@@ -2,8 +2,8 @@
 ;;; Jira CLI — Issue Links & Remote Links
 
 (import
-  :ober/jira/api
-  :ober/jira/format
+  :jira/jira/api
+  :jira/jira/format
   :std/format
   :std/iter
   :std/sugar

@@ -2,10 +2,10 @@
 ;;; Jira CLI — Issues, Comments, Votes, Watchers, Worklogs, Attachments
 
 (import
-  :ober/jira/api
-  :ober/jira/config
-  :ober/jira/format
-  :ober/jira/users
+  :jira/jira/api
+  :jira/jira/config
+  :jira/jira/format
+  :jira/jira/users
   :std/format
   :std/iter
   :std/pregexp

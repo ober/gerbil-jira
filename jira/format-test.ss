@@ -1,17 +1,18 @@
-;; -*- Gerbil -*-
-;;; Jira client unit tests
+;;; -*- Gerbil -*-
+;;; Tests for format, api, and config modules
 
 (import
   :std/test
   :std/format
   :std/text/json
-  :std/pregexp
-  :ober/jira/client)
+  :jira/jira/format
+  :jira/jira/api
+  :jira/jira/config)
 
-(export client-test)
+(export format-test)
 
-(def client-test
-  (test-suite "jira client"
+(def format-test
+  (test-suite "jira format/api/config"
 
     ;;; --- email-short ---
     (test-case "email-short: extracts username from email"
@@ -24,26 +25,66 @@
       (check (email-short "noemail") => "noemail"))
 
     (test-case "email-short: handles #f"
-      (check (email-short #f) => #f))
+      (check (email-short #f) => ""))
 
     (test-case "email-short: handles empty string"
       (check (email-short "") => ""))
 
-    ;;; --- convert-names ---
-    (test-case "convert-names: converts @user in middle"
-      (check (convert-names "test for @janedoe to confluence")
-             => "test for [~janedoe] to confluence"))
+    ;;; --- yon ---
+    (test-case "yon: true gives Yes"
+      (check (yon #t) => "Yes"))
 
-    (test-case "convert-names: converts @user at beginning"
-      (check (convert-names "@janedoe this is a test")
-             => "[~janedoe] this is a test"))
+    (test-case "yon: false gives No"
+      (check (yon #f) => "No"))
 
-    (test-case "convert-names: converts multiple @users"
-      (check (convert-names "@alice and @bob are here")
-             => "[~alice] and [~bob] are here"))
+    ;;; --- ->string ---
+    (test-case "->string: string passthrough"
+      (check (->string "hello") => "hello"))
 
-    (test-case "convert-names: no change without @"
-      (check (convert-names "no users here") => "no users here"))
+    (test-case "->string: number to string"
+      (check (->string 42) => "42"))
+
+    (test-case "->string: #f to empty"
+      (check (->string #f) => ""))
+
+    (test-case "->string: boolean to Yes/No"
+      (check (->string #t) => "Yes"))
+
+    (test-case "->string: symbol to string"
+      (check (->string 'foo) => "foo"))
+
+    ;;; --- truncate-string ---
+    (test-case "truncate-string: short string unchanged"
+      (check (truncate-string "hi" 10) => "hi"))
+
+    (test-case "truncate-string: long string truncated"
+      (check (truncate-string "hello world this is long" 10) => "hello w..."))
+
+    (test-case "truncate-string: handles #f"
+      (check (truncate-string #f 10) => ""))
+
+    ;;; --- date-short ---
+    (test-case "date-short: extracts date from ISO datetime"
+      (check (date-short "2024-01-15T10:30:00.000+0000") => "2024-01-15"))
+
+    (test-case "date-short: handles short string"
+      (check (date-short "2024") => "2024"))
+
+    (test-case "date-short: handles #f"
+      (check (date-short #f) => ""))
+
+    ;;; --- org-table-safe ---
+    (test-case "org-table-safe: replaces pipe characters"
+      (check (org-table-safe "a|b|c") => "a/b/c"))
+
+    (test-case "org-table-safe: no change without pipes"
+      (check (org-table-safe "no pipes") => "no pipes"))
+
+    (test-case "org-table-safe: handles non-string"
+      (check (org-table-safe 42) => "42"))
+
+    (test-case "org-table-safe: handles empty string"
+      (check (org-table-safe "") => ""))
 
     ;;; --- text-to-adf ---
     (test-case "text-to-adf: returns hash table"
@@ -58,23 +99,17 @@
     (test-case "text-to-adf: has content list"
       (check (list? (hash-ref (text-to-adf "Hello") "content")) => #t))
 
-    (test-case "text-to-adf: content has paragraph"
-      (let* ((adf (text-to-adf "Hello"))
-             (content (hash-ref adf "content"))
-             (para (car content)))
-        (check (hash-ref para "type") => "paragraph")))
-
-    (test-case "text-to-adf: paragraph has text node"
+    (test-case "text-to-adf: content has paragraph with text"
       (let* ((adf (text-to-adf "Hello"))
              (content (hash-ref adf "content"))
              (para (car content))
              (inner (hash-ref para "content"))
              (text-node (car inner)))
+        (check (hash-ref para "type") => "paragraph")
         (check (hash-ref text-node "type") => "text")
         (check (hash-ref text-node "text") => "Hello")))
 
     ;;; --- adf-to-text ---
-    ;; adf-to-text uses symbol keys (from JSON parsing), not string keys
     (test-case "adf-to-text: handles plain string"
       (check (adf-to-text "plain text") => "plain text"))
 
@@ -112,19 +147,6 @@
         (hash-put! doc 'content [para])
         (check (adf-to-text doc) => "Full doc")))
 
-    ;;; --- org-table-safe ---
-    (test-case "org-table-safe: replaces pipe characters"
-      (check (org-table-safe "a|b|c") => "a-b-c"))
-
-    (test-case "org-table-safe: no change without pipes"
-      (check (org-table-safe "no pipes") => "no pipes"))
-
-    (test-case "org-table-safe: handles non-string"
-      (check (org-table-safe 42) => 42))
-
-    (test-case "org-table-safe: handles empty string"
-      (check (org-table-safe "") => ""))
-
     ;;; --- default-headers ---
     (test-case "default-headers: returns list of 3 headers"
       (check (length (default-headers "Basic abc")) => 3))
@@ -132,22 +154,9 @@
     (test-case "default-headers: contains authorization"
       (let ((headers (default-headers "Basic mytoken")))
         (check (list? headers) => #t)
-        ;; Last header should be authorization
         (let ((auth-header (caddr headers)))
-          (check (car auth-header) => "Authorization"))))
-
-    ;;; --- red ---
-    (test-case "red: wraps text in ANSI red codes"
-      (let ((result (red "error")))
-        (check (string? result) => #t)))
-
-    (test-case "red: contains original text"
-      (let ((result (red "warning")))
-        (check (string-contains result "warning") ? values)))
-
-    (test-case "red: contains ANSI escape"
-      (let ((result (red "test")))
-        (check (string-contains result "\x1b;") ? values)))
+          (check (car auth-header) => "Authorization")
+          (check (cdr auth-header) => "Basic mytoken"))))
 
     ;;; --- version ---
     (test-case "version: is a string"
@@ -162,8 +171,4 @@
 
     (test-case "config-file: ends with .yaml"
       (check (string-contains config-file ".yaml") ? values))
-
-    ;;; --- program-name ---
-    (test-case "program-name: is jira"
-      (check program-name => "jira"))
     ))

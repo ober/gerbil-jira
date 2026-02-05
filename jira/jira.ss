@@ -2,17 +2,17 @@
 ;;; Jira CLI — Entry Point
 
 (import
-  :ober/jira/admin
-  :ober/jira/agile
-  :ober/jira/api
-  :ober/jira/config
-  :ober/jira/format
-  :ober/jira/issues
-  :ober/jira/links
-  :ober/jira/projects
-  :ober/jira/properties
-  :ober/jira/search
-  :ober/jira/users
+  :jira/jira/admin
+  :jira/jira/agile
+  :jira/jira/api
+  :jira/jira/config
+  :jira/jira/format
+  :jira/jira/issues
+  :jira/jira/links
+  :jira/jira/projects
+  :jira/jira/properties
+  :jira/jira/search
+  :jira/jira/users
   :std/format
   :std/getopt
   :std/pregexp

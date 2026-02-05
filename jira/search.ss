@@ -2,9 +2,9 @@
 ;;; Jira CLI — Search & JQL
 
 (import
-  :ober/jira/api
-  :ober/jira/config
-  :ober/jira/format
+  :jira/jira/api
+  :jira/jira/config
+  :jira/jira/format
   :std/format
   :std/iter
   :std/pregexp
