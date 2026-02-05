@@ -237,27 +237,26 @@
     ;; Config command
     (command 'config help: "Setup credentials")))
 
-(def (jira-main opt)
+(def (jira-main cmd opt)
   ;; Set output format from global flags
   (when (hash-get opt 'json)
     (current-output-format 'json))
   (when (hash-get opt 'csv)
     (current-output-format 'csv))
 
-  (let ((cmd (hash-get opt 'command)))
-    (case cmd
-      ;; Config (no auth needed)
-      ((config) (config-setup!))
+  (case cmd
+    ;; Config (no auth needed)
+    ((config) (config-setup!))
 
-      ;; Open in browser (needs config but simple)
-      ((open)
-       (let ((config (load-config)))
-         (issue-open config (hash-get opt 'id))))
+    ;; Open in browser (needs config but simple)
+    ((open)
+     (let ((config (load-config)))
+       (issue-open config (hash-get opt 'id))))
 
-      ;; All other commands need config
-      (else
-       (let ((config (load-config)))
-         (case cmd
+    ;; All other commands need config
+    (else
+     (let ((config (load-config)))
+       (case cmd
            ;; Issues
            ((issue) (issue-get config (hash-get opt 'id)))
            ((create) (issue-create config (hash-get opt 'project)
@@ -394,7 +393,7 @@
 
            (else
             (displayln (format "Unknown command: ~a" cmd))
-            (exit 2))))))))
+            (exit 2)))))))
 
 (def (issue-open config id)
   "Open issue in browser"
