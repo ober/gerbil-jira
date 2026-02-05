@@ -15,7 +15,6 @@ check-root:
 
 deps:
 	$(GERBIL_HOME)/bin/gxpkg install github.com/mighty-gerbils/gerbil-libyaml
-	$(GERBIL_HOME)/bin/gxpkg install github.com/ober/oberlib
 
 build: deps check-root
 	$(GERBIL_HOME)/bin/gxpkg link $(PROJECT) /src || true

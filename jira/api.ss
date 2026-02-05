@@ -13,9 +13,9 @@
 ;;;; HTTP helpers
 
 (def (default-headers basic-auth)
-  [["Accept" . "application/json"]
-   ["Content-Type" . "application/json"]
-   ["Authorization" . basic-auth]])
+  (list (cons "Accept" "application/json")
+        (cons "Content-Type" "application/json")
+        (cons "Authorization" basic-auth)))
 
 (def (check-response resp)
   "Check HTTP response status. Return parsed JSON body or raise error."

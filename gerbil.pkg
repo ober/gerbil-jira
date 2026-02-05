@@ -1,4 +1,4 @@
 (package:
  ober
  depend:
- ("github.com/ober/oberlib" "github.com/mighty-gerbils/gerbil-libyaml"))
+ ("github.com/mighty-gerbils/gerbil-libyaml"))
